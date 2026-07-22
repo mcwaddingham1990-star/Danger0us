@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="glowReg" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="55%" stop-color="#b9c2cc"/>
+      <stop offset="100%" stop-color="#4b5560"/>
+    </radialGradient>
+    <linearGradient id="facetReg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <polygon points="100,16 168,70 140,184 60,184 32,70" fill="url(#glowReg)" stroke="#20262c" stroke-width="4"/>
+  <polygon points="100,16 168,70 100,96" fill="url(#facetReg)"/>
+  <polygon points="32,70 100,96 60,184" fill="#ffffff" opacity="0.15"/>
+  <polygon points="168,70 140,184 100,96" fill="#000000" opacity="0.18"/>
+  <polygon points="100,16 32,70 168,70" fill="none" stroke="#f0f3f6" stroke-width="2" opacity="0.6"/>
+</svg>

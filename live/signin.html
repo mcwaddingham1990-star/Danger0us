@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dangerous Rides — Sign In</title>
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="css/ticker.css">
+</head>
+<body>
+<div class="auth-page" style="background-image: url('images/auth.screens/signin.png');">
+  <div class="auth-card">
+    <h1>WELCOME BACK</h1>
+    <p class="subtitle">Sign in to your account</p>
+
+    <div class="form-message" id="formMessage"></div>
+
+    <form id="signinForm" novalidate>
+      <div class="field">
+        <label for="email">Email or Username</label>
+        <div class="input-wrap">
+          <input type="text" id="email" placeholder="Enter your email or username" autocomplete="username">
+        </div>
+        <div class="field-error" id="emailError"></div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <input type="password" id="password" class="has-toggle" placeholder="Enter your password" autocomplete="current-password">
+          <button type="button" class="toggle-visibility" data-target="password">👁</button>
+        </div>
+        <div class="field-error" id="passwordError"></div>
+      </div>
+
+      <div class="link-row">
+        <a href="forgot-password.html">Forgot Password?</a>
+      </div>
+
+      <button type="submit" class="btn-primary">SIGN IN</button>
+    </form>
+
+    <p class="below-text">Don't have an account? <a href="create-account.html">Sign Up</a></p>
+  </div>
+</div>
+
+<div id="tickerBar" class="ticker-bar"></div>
+
+<script src="js/data.js"></script>
+<script src="auth.js"></script>
+<script src="js/ticker.js"></script>
+<script>
+  const form = document.getElementById("signinForm");
+  const message = document.getElementById("formMessage");
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    const emailError = document.getElementById("emailError");
+    const passwordError = document.getElementById("passwordError");
+
+    let valid = true;
+    const existing = drFindPlayer(email);
+
+    if (!existing && !isValidEmail(email)) {
+      showFieldError(emailError, "Enter a valid email address.");
+      valid = false;
+    } else {
+      showFieldError(emailError, "");
+    }
+
+    if (password.length < 1) {
+      showFieldError(passwordError, "Password is required.");
+      valid = false;
+    } else {
+      showFieldError(passwordError, "");
+    }
+
+    if (!valid) {
+      showMessage(message, "Please fix the errors below.", "error");
+      return;
+    }
+
+    if (existing && existing.password && existing.password !== password) {
+      showFieldError(passwordError, "Incorrect password.");
+      showMessage(message, "Please fix the errors below.", "error");
+      return;
+    }
+
+    let player = existing;
+    if (!player) player = drCreatePlayer(email);
+    drSetSession(player.email);
+
+    showMessage(message, "Signed in. Redirecting…", "success");
+    setTimeout(() => {
+      window.location.href = player.role === "admin" ? "admin.html" : "dashboard.html";
+    }, 600);
+  });
+
+  startTicker(document.getElementById("tickerBar"));
+</script>
+</body>
+</html>

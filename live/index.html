@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dangerous Rides</title>
+<script src="js/data.js"></script>
+<script>
+  const session = drGetSession();
+  if (session) {
+    const player = drCurrentPlayer();
+    window.location.replace(player && player.role === "admin" ? "admin.html" : "dashboard.html");
+  } else {
+    window.location.replace("signin.html");
+  }
+</script>
+</head>
+<body></body>
+</html>

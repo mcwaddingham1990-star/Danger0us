@@ -1,0 +1,145 @@
+.player-row {
+  background: rgba(0, 8, 20, 0.55);
+  border: 1px solid rgba(120, 170, 230, 0.25);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.player-row .email {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #f0f5ff;
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+.player-row .mini-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+  font-size: 0.72rem;
+  color: #9db6d8;
+  margin-bottom: 8px;
+}
+
+.player-row .mini-stats b { color: #cfe4ff; }
+
+.add-credits-row {
+  display: flex;
+  gap: 8px;
+}
+
+.add-credits-row input {
+  flex: 1;
+  background: rgba(0, 6, 18, 0.65);
+  border: 1px solid rgba(120, 170, 230, 0.35);
+  border-radius: 8px;
+  color: #f0f5ff;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  min-width: 0;
+}
+
+.add-credits-row button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #2f7dff, #1454c9);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.redeem-list {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(120, 170, 230, 0.2);
+}
+
+.redeem-list-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9db6d8;
+  margin-bottom: 6px;
+}
+
+.redeem-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  padding: 5px 0;
+}
+
+.redeem-code-sm {
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #4fa3ff;
+}
+
+.redeem-amt-sm {
+  color: #f0f5ff;
+}
+
+.redeem-status {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.redeem-status.pending {
+  background: rgba(230, 170, 40, 0.2);
+  color: #ffcf6b;
+}
+
+.redeem-status.fulfilled {
+  background: rgba(46, 160, 90, 0.2);
+  color: #a9f0c0;
+}
+
+.redeem-row .fulfillBtn {
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid rgba(120, 170, 230, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: #cfe4ff;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.section-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9db6d8;
+  margin: 18px 0 10px;
+}
+
+.setting-row {
+  margin-bottom: 16px;
+}
+
+.setting-row label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: #dbe6f5;
+  margin-bottom: 6px;
+}
+
+.setting-row label .val {
+  color: #4fa3ff;
+  font-weight: 700;
+}
+
+.setting-row input[type="range"] {
+  width: 100%;
+  accent-color: #2f7dff;
+}

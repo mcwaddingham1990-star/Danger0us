@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dangerous Rides — Create Account</title>
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="css/ticker.css">
+</head>
+<body>
+<div class="auth-page" style="background-image: url('images/auth.screens/create-account.png');">
+  <div class="auth-card">
+    <h1>CREATE ACCOUNT</h1>
+    <p class="subtitle">Join Dangerous Rides</p>
+
+    <div class="form-message" id="formMessage"></div>
+
+    <form id="signupForm" novalidate>
+      <div class="field">
+        <label for="email">Email</label>
+        <div class="input-wrap">
+          <input type="email" id="email" placeholder="Enter your email" autocomplete="email">
+        </div>
+        <div class="field-error" id="emailError"></div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <input type="password" id="password" class="has-toggle" placeholder="Create a password" autocomplete="new-password">
+          <button type="button" class="toggle-visibility" data-target="password">👁</button>
+        </div>
+        <div class="field-error" id="passwordError"></div>
+      </div>
+
+      <div class="field">
+        <label for="confirmPassword">Confirm Password</label>
+        <div class="input-wrap">
+          <input type="password" id="confirmPassword" class="has-toggle" placeholder="Confirm your password" autocomplete="new-password">
+          <button type="button" class="toggle-visibility" data-target="confirmPassword">👁</button>
+        </div>
+        <div class="field-error" id="confirmError"></div>
+      </div>
+
+      <button type="submit" class="btn-primary">SIGN UP</button>
+    </form>
+
+    <p class="below-text">Already have an account? <a href="signin.html">Sign In</a></p>
+  </div>
+</div>
+
+<div id="tickerBar" class="ticker-bar"></div>
+
+<script src="js/data.js"></script>
+<script src="auth.js"></script>
+<script src="js/ticker.js"></script>
+<script>
+  const form = document.getElementById("signupForm");
+  const message = document.getElementById("formMessage");
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
+
+    const emailError = document.getElementById("emailError");
+    const passwordError = document.getElementById("passwordError");
+    const confirmError = document.getElementById("confirmError");
+
+    let valid = true;
+
+    if (!isValidEmail(email)) {
+      showFieldError(emailError, "Enter a valid email address.");
+      valid = false;
+    } else {
+      showFieldError(emailError, "");
+    }
+
+    if (password.length < 8) {
+      showFieldError(passwordError, "Password must be at least 8 characters.");
+      valid = false;
+    } else {
+      showFieldError(passwordError, "");
+    }
+
+    if (confirmPassword !== password || confirmPassword.length === 0) {
+      showFieldError(confirmError, "Passwords do not match.");
+      valid = false;
+    } else {
+      showFieldError(confirmError, "");
+    }
+
+    if (!valid) {
+      showMessage(message, "Please fix the errors below.", "error");
+      return;
+    }
+
+    drCreatePlayer(email);
+    drSetSession(email);
+    showMessage(message, "Account created. Redirecting…", "success");
+    setTimeout(() => { window.location.href = "dashboard.html"; }, 600);
+  });
+
+  startTicker(document.getElementById("tickerBar"));
+</script>
+</body>
+</html>

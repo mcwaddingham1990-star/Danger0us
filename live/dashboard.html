@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dangerous Rides — Dashboard</title>
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/ticker.css">
+</head>
+<body>
+<div class="scroll-page" style="background-image: url('images/dash.screens/dashboard-scroll.jpg');">
+  <div class="scroll-panel">
+    <h1>YOUR STATS</h1>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="label">Time Playing</div>
+        <div class="value" id="statTime">0m</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Current Credits</div>
+        <div class="value" id="statCredits">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Credits Played</div>
+        <div class="value" id="statPlayed">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Credits Won</div>
+        <div class="value" id="statWon">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Credits Lost</div>
+        <div class="value" id="statLost">0</div>
+      </div>
+    </div>
+
+    <div class="deposit-history">
+      <div class="label">Credits Deposit History</div>
+      <div id="depositList"></div>
+    </div>
+
+    <div class="deposit-history" id="redeemBox">
+      <div class="label">Redeem Credits</div>
+      <div class="redeem-form">
+        <input type="number" id="redeemAmount" placeholder="Amount to redeem" min="1">
+        <button class="btn-primary" id="redeemBtn" style="margin: 0;">REDEEM</button>
+      </div>
+      <div class="form-message" id="redeemMessage"></div>
+      <div id="redeemCodeBox" class="redeem-code-box" style="display:none;">
+        <div class="label">Your Redemption Code</div>
+        <div class="redeem-code" id="redeemCodeText"></div>
+        <p class="redeem-note">Save this code — you'll be emailed with your choice of offers once it's confirmed.</p>
+      </div>
+    </div>
+
+    <div class="deposit-history">
+      <div class="label">Your Redemption History</div>
+      <div id="redemptionHistoryList"></div>
+    </div>
+
+    <button class="btn-primary" id="goToGamesBtn">GO TO GAMES</button>
+    <button class="btn-secondary" id="signOutBtn">Sign Out</button>
+  </div>
+</div>
+
+<div id="tickerBar" class="ticker-bar"></div>
+
+<div class="modal-overlay" id="gamesModal">
+  <div class="modal-box">
+    <h2>CHOOSE YOUR GAME</h2>
+    <a class="game-option blue" href="game.html">
+      <span class="name">Blue Diamonds</span>
+      <span class="tag">PLAY</span>
+    </a>
+    <div class="game-option red">
+      <span class="name">Red Devil</span>
+      <span class="tag">COMING SOON</span>
+    </div>
+    <div class="modal-close"><a href="#" id="closeModal">Close</a></div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/ticker.js"></script>
+<script>
+  const session = drRequireSessionOrRedirect("signin.html");
+  if (session) {
+    const player = drCurrentPlayer();
+    if (player) {
+      if (player.role === "admin") {
+        window.location.href = "admin.html";
+      } else {
+        document.getElementById("statTime").textContent = (player.timePlayingMinutes || 0) + "m";
+        document.getElementById("statCredits").textContent = (player.credits || 0).toLocaleString();
+        document.getElementById("statPlayed").textContent = (player.creditsPlayed || 0).toLocaleString();
+        document.getElementById("statWon").textContent = (player.creditsWon || 0).toLocaleString();
+        document.getElementById("statLost").textContent = (player.creditsLost || 0).toLocaleString();
+
+        const list = document.getElementById("depositList");
+        const history = player.depositHistory || [];
+        if (history.length === 0) {
+          list.innerHTML = '<div class="deposit-row"><span>No deposits yet</span></div>';
+        } else {
+          list.innerHTML = history.slice().reverse().map((d) => {
+            const date = new Date(d.at).toLocaleDateString();
+            return `<div class="deposit-row"><span>${d.note || "Deposit"} — ${date}</span><span class="amt">+${d.amount}</span></div>`;
+          }).join("");
+        }
+
+        renderRedemptionHistory(player.email);
+      }
+    }
+  }
+
+  function renderRedemptionHistory(email) {
+    const box = document.getElementById("redemptionHistoryList");
+    const mine = drGetRedemptions().filter((r) => r.email.toLowerCase() === email.toLowerCase());
+    if (mine.length === 0) {
+      box.innerHTML = '<div class="deposit-row"><span>No redemptions yet</span></div>';
+      return;
+    }
+    box.innerHTML = mine.slice().reverse().map((r) => {
+      const date = new Date(r.createdAt).toLocaleDateString();
+      const statusLabel = r.status === "fulfilled" ? "Fulfilled" : "Pending";
+      return `<div class="deposit-row"><span>${r.code} — ${date} (${statusLabel})</span><span class="amt">${r.amount}</span></div>`;
+    }).join("");
+  }
+
+  document.getElementById("redeemBtn").addEventListener("click", () => {
+    const player = drCurrentPlayer();
+    if (!player) return;
+    const input = document.getElementById("redeemAmount");
+    const msg = document.getElementById("redeemMessage");
+    const amount = parseInt(input.value, 10);
+
+    if (!amount || amount <= 0) {
+      showMessage(msg, "Enter a valid amount.", "error");
+      return;
+    }
+    if (amount > player.credits) {
+      showMessage(msg, "You don't have that many credits.", "error");
+      return;
+    }
+
+    const redemption = drCreateRedemption(player.email, amount);
+    if (!redemption) {
+      showMessage(msg, "Redemption failed — try again.", "error");
+      return;
+    }
+
+    input.value = "";
+    showMessage(msg, "Redemption submitted!", "success");
+    document.getElementById("redeemCodeBox").style.display = "block";
+    document.getElementById("redeemCodeText").textContent = redemption.code;
+
+    const updated = drFindPlayer(player.email);
+    document.getElementById("statCredits").textContent = Math.round(updated.credits).toLocaleString();
+    renderRedemptionHistory(player.email);
+  });
+
+  function showMessage(el, text, kind) {
+    el.textContent = text;
+    el.className = "form-message show " + kind;
+  }
+
+  document.getElementById("signOutBtn").addEventListener("click", () => {
+    drClearSession();
+    window.location.href = "signin.html";
+  });
+
+  const modal = document.getElementById("gamesModal");
+  document.getElementById("goToGamesBtn").addEventListener("click", () => modal.classList.add("open"));
+  document.getElementById("closeModal").addEventListener("click", (e) => {
+    e.preventDefault();
+    modal.classList.remove("open");
+  });
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) modal.classList.remove("open");
+  });
+
+  startTicker(document.getElementById("tickerBar"));
+</script>
+</body>
+</html>

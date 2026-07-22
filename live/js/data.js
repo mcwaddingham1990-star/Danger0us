@@ -19,8 +19,6 @@ const DEFAULT_SETTINGS = {
   multiplierFrequency: 50, // 0-100, how fast the cascade multiplier climbs
   jackpotChance: 0.3,      // 0-100
   clusterMin: 5,           // minimum touching symbols to pay
-  columns: 8,
-  rows: 10,
 };
 
 const SEED_ADMIN = {

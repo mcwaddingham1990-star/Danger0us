@@ -2,8 +2,8 @@ const session = drRequireSessionOrRedirect("signin.html");
 let player = session ? drCurrentPlayer() : null;
 
 if (player) {
-  const cols = () => (drGetSettings().columns || 8);
-  const rows = () => (drGetSettings().rows || 10);
+  const cols = () => GRID_COLS;
+  const rows = () => GRID_ROWS;
   const BONUS_COLS = 8;
   const BONUS_ROWS = 10;
 
@@ -70,7 +70,7 @@ if (player) {
   */
   function spinReveal(container, c, r, finalGrid) {
     return new Promise((resolve) => {
-      const extraRows = 10;
+      const extraRows = 22;
       const stripLen = extraRows + r;
 
       container.style.display = "flex";
@@ -79,8 +79,10 @@ if (player) {
       container.style.gridTemplateRows = "";
       container.innerHTML = "";
 
-      const perColDelay = 130;
-      const baseDuration = 850;
+      DrAudio.spinStart();
+
+      const perColDelay = 220;
+      const baseDuration = 1600;
       let remaining = c;
 
       for (let ci = 0; ci < c; ci++) {
@@ -118,6 +120,7 @@ if (player) {
 
         setTimeout(() => {
           strip.classList.remove("spinning");
+          DrAudio.reelStop();
         }, delay + baseDuration - 150);
 
         setTimeout(() => {
@@ -136,6 +139,8 @@ if (player) {
       const step = result.steps[i];
       const cells = step.removedCells.map((k) => k.split(",").map(Number));
       highlightCells(container, cells);
+      DrAudio.explosion();
+      DrAudio.winChime(Math.min(3, i - 1));
       await sleep(480);
       renderGrid(container, step.grid, c, r, true);
       await sleep(300);
@@ -156,6 +161,7 @@ if (player) {
       player.creditsWon = (player.creditsWon || 0) + 2500;
       drUpsertPlayer(player);
       refreshHud();
+      DrAudio.jackpot();
       alert("MEGA JACKPOT! +2500 credits");
       return true;
     }
@@ -166,6 +172,7 @@ if (player) {
     document.getElementById("jesterCountText").textContent = jesterCountInitial;
     document.getElementById("freeSpinsAwarded").textContent = freeSpinsAwarded;
     document.getElementById("bonusAnnounce").classList.add("show");
+    DrAudio.bonusTrigger();
     await sleep(2200);
     document.getElementById("bonusAnnounce").classList.remove("show");
 
@@ -267,7 +274,18 @@ if (player) {
     document.getElementById("btnSpinFloat").classList.remove("disabled");
   }
 
-  document.getElementById("btnSpinFloat").addEventListener("click", () => playSpin());
+  document.getElementById("btnSpinFloat").addEventListener("click", () => {
+    DrAudio.start();
+    playSpin();
+  });
+
+  const muteBtn = document.getElementById("btnMute");
+  muteBtn.addEventListener("click", () => {
+    DrAudio.start();
+    const next = !DrAudio.isMuted();
+    DrAudio.setMuted(next);
+    muteBtn.textContent = next ? "🔇" : "🔊";
+  });
 
   document.getElementById("btnMinBetFloat").addEventListener("click", () => {
     if (isSpinning) return;

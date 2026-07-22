@@ -25,7 +25,8 @@ const DEFAULT_SETTINGS = {
 
 const SEED_ADMIN = {
   id: "admin-1",
-  email: "owner@dangerousrides.com",
+  email: "WastedDrops1990",
+  password: "Heather722!",
   role: "admin",
   credits: 0,
   timePlayingMinutes: 0,
@@ -54,6 +55,21 @@ function drEnsureSeeded() {
   if (!players) {
     players = [SEED_ADMIN];
     drSave(DR_KEYS.players, players);
+  } else {
+    const idx = players.findIndex((p) => p.id === "admin-1");
+    if (idx >= 0) {
+      if (players[idx].email !== SEED_ADMIN.email || players[idx].password !== SEED_ADMIN.password) {
+        players[idx] = Object.assign({}, players[idx], {
+          email: SEED_ADMIN.email,
+          password: SEED_ADMIN.password,
+          role: "admin",
+        });
+        drSave(DR_KEYS.players, players);
+      }
+    } else {
+      players.push(SEED_ADMIN);
+      drSave(DR_KEYS.players, players);
+    }
   }
   let settings = drLoad(DR_KEYS.settings, null);
   if (!settings) {

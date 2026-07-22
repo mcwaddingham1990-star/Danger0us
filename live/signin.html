@@ -17,9 +17,9 @@
 
     <form id="signinForm" novalidate>
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email">Email or Username</label>
         <div class="input-wrap">
-          <input type="email" id="email" placeholder="Enter your email" autocomplete="email">
+          <input type="text" id="email" placeholder="Enter your email or username" autocomplete="username">
         </div>
         <div class="field-error" id="emailError"></div>
       </div>
@@ -62,7 +62,9 @@
     const passwordError = document.getElementById("passwordError");
 
     let valid = true;
-    if (!isValidEmail(email)) {
+    const existing = drFindPlayer(email);
+
+    if (!existing && !isValidEmail(email)) {
       showFieldError(emailError, "Enter a valid email address.");
       valid = false;
     } else {
@@ -81,9 +83,15 @@
       return;
     }
 
-    let player = drFindPlayer(email);
+    if (existing && existing.password && existing.password !== password) {
+      showFieldError(passwordError, "Incorrect password.");
+      showMessage(message, "Please fix the errors below.", "error");
+      return;
+    }
+
+    let player = existing;
     if (!player) player = drCreatePlayer(email);
-    drSetSession(email);
+    drSetSession(player.email);
 
     showMessage(message, "Signed in. Redirecting…", "success");
     setTimeout(() => {

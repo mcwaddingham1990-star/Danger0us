@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dangerous Rides — Create Account</title>
 <link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="css/ticker.css">
 </head>
 <body>
 <div class="auth-page" style="background-image: url('images/auth.screens/create-account.png');">
@@ -48,7 +49,11 @@
   </div>
 </div>
 
+<div id="tickerBar" class="ticker-bar"></div>
+
+<script src="js/data.js"></script>
 <script src="auth.js"></script>
+<script src="js/ticker.js"></script>
 <script>
   const form = document.getElementById("signupForm");
   const message = document.getElementById("formMessage");
@@ -91,10 +96,13 @@
       return;
     }
 
-    setSession(email);
+    drCreatePlayer(email);
+    drSetSession(email);
     showMessage(message, "Account created. Redirecting…", "success");
-    setTimeout(() => { window.location.href = "index.html"; }, 600);
+    setTimeout(() => { window.location.href = "dashboard.html"; }, 600);
   });
+
+  startTicker(document.getElementById("tickerBar"));
 </script>
 </body>
 </html>

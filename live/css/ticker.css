@@ -1,0 +1,33 @@
+.ticker-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.55));
+  border-top: 1px solid rgba(90, 160, 255, 0.35);
+  overflow: hidden;
+  z-index: 50;
+}
+
+.ticker-bar .ticker-item {
+  position: absolute;
+  color: #cfe4ff;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.ticker-bar .ticker-item.show {
+  opacity: 1;
+}
+
+.ticker-bar .ticker-item .amt {
+  color: #4fa3ff;
+  font-weight: 700;
+}

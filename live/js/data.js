@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS = {
   multiplierFrequency: 50, // 0-100, how fast the cascade multiplier climbs
   jackpotChance: 1,        // 0-100
   clusterMin: 5,           // minimum touching symbols to pay
-  columns: 10,
+  columns: 8,
   rows: 10,
 };
 

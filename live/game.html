@@ -32,13 +32,6 @@
       </div>
     </div>
 
-    <button class="hitbox" id="btnBet" title="Bet -"></button>
-    <button class="hitbox" id="btnMaxBet" title="Max Bet"></button>
-    <button class="hitbox" id="btnMegaWays" title="Bet +"></button>
-    <button class="hitbox" id="btnSpin" title="Spin"></button>
-    <button class="hitbox" id="btnAutoPlay" title="Auto Play"></button>
-    <button class="hitbox" id="btnFastSpin" title="Fast Spin"></button>
-
     <div class="bonus-overlay" id="bonusAnnounce" style="background-image:url('images/dash.screens/bonus-spins-scroll.png');">
       <h2>BONUS SPINS TRIGGERED</h2>
       <p>Jesters found: <span id="jesterCountText">0</span></p>
@@ -77,6 +70,22 @@
       </div>
     </div>
   </div>
+</div>
+
+<div class="control-bar">
+  <button class="ctrl-btn" id="btnMinBetFloat">
+    <span class="ctrl-label">Min Bet</span>
+  </button>
+  <button class="ctrl-btn" id="btnMultiplierFloat">
+    <span class="ctrl-label">Multiplier</span>
+    <span class="ctrl-sub" id="multiplierVal">x5</span>
+  </button>
+  <button class="ctrl-btn" id="btnMaxBetFloat">
+    <span class="ctrl-label">Max Bet</span>
+  </button>
+  <button class="ctrl-btn spin" id="btnSpinFloat">
+    <span class="ctrl-label">Spin</span>
+  </button>
 </div>
 
 <script src="js/data.js"></script>

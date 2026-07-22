@@ -2,7 +2,7 @@ const session = drRequireSessionOrRedirect("signin.html");
 let player = session ? drCurrentPlayer() : null;
 
 if (player) {
-  const cols = () => (drGetSettings().columns || 10);
+  const cols = () => (drGetSettings().columns || 8);
   const rows = () => (drGetSettings().rows || 10);
   const BONUS_COLS = 8;
   const BONUS_ROWS = 10;
@@ -10,26 +10,25 @@ if (player) {
   const betLevels = [1, 2, 5, 10, 25, 50, 100];
   let betIndex = 2;
   let isSpinning = false;
-  let fastSpin = false;
-  let autoPlay = false;
-  let autoSpinsLeft = 0;
 
   const reelWindow = document.getElementById("reelWindow");
   const hudBet = document.getElementById("hudBet");
   const hudCredits = document.getElementById("hudCredits");
   const hudWin = document.getElementById("hudWin");
   const creditsTop = document.getElementById("creditsTop");
+  const multiplierBtnVal = document.getElementById("multiplierVal");
 
   function sleep(ms) { return new Promise((res) => setTimeout(res, ms)); }
-  function speed(ms) { return fastSpin ? ms * 0.4 : ms; }
 
   function refreshHud() {
     hudBet.textContent = betLevels[betIndex];
     hudCredits.textContent = Math.round(player.credits).toLocaleString();
     creditsTop.textContent = Math.round(player.credits).toLocaleString() + " cr";
+    if (multiplierBtnVal) multiplierBtnVal.textContent = "x" + betLevels[betIndex];
   }
 
   function setupGridContainer(container, c, r) {
+    container.style.display = "grid";
     container.style.gridTemplateColumns = `repeat(${c}, 1fr)`;
     container.style.gridTemplateRows = `repeat(${r}, 1fr)`;
   }
@@ -62,31 +61,84 @@ if (player) {
     });
   }
 
-  async function shuffleFlash(container, c, r, durationMs) {
-    const frames = Math.max(2, Math.round(durationMs / 90));
-    for (let f = 0; f < frames; f++) {
-      const fakeGrid = [];
-      for (let ri = 0; ri < r; ri++) {
-        const row = [];
-        for (let ci = 0; ci < c; ci++) row.push(SYMBOL_SET[Math.floor(Math.random() * SYMBOL_SET.length)].id);
-        fakeGrid.push(row);
+  /*
+    Realistic reel spin: each column is its own scrollable strip of filler
+    symbols followed by the real final column values. The strip animates
+    from "showing filler" to "showing the final rows", staggered left to
+    right so columns stop one after another, with a motion-blur while
+    moving fast that clears just before it settles.
+  */
+  function spinReveal(container, c, r, finalGrid) {
+    return new Promise((resolve) => {
+      const extraRows = 10;
+      const stripLen = extraRows + r;
+
+      container.style.display = "flex";
+      container.style.flexDirection = "row";
+      container.style.gridTemplateColumns = "";
+      container.style.gridTemplateRows = "";
+      container.innerHTML = "";
+
+      const perColDelay = 130;
+      const baseDuration = 850;
+      let remaining = c;
+
+      for (let ci = 0; ci < c; ci++) {
+        const col = document.createElement("div");
+        col.className = "reel-col";
+        col.style.width = (100 / c) + "%";
+
+        const strip = document.createElement("div");
+        strip.className = "reel-strip spinning";
+        strip.style.height = (stripLen / r * 100) + "%";
+
+        for (let si = 0; si < stripLen; si++) {
+          const isFinal = si >= extraRows;
+          const ri = si - extraRows;
+          const symId = isFinal
+            ? finalGrid[ri][ci]
+            : SYMBOL_SET[Math.floor(Math.random() * SYMBOL_SET.length)].id;
+          const sym = symbolById(symId);
+          const tile = document.createElement("div");
+          tile.className = "tile reel-strip-tile";
+          if (sym) tile.style.backgroundImage = `url('${sym.img}')`;
+          strip.appendChild(tile);
+        }
+
+        col.appendChild(strip);
+        container.appendChild(col);
+
+        const travel = ((stripLen - r) / stripLen) * 100;
+        const delay = ci * perColDelay;
+
+        setTimeout(() => {
+          strip.style.transition = `transform ${baseDuration}ms cubic-bezier(0.2, 0.85, 0.25, 1)`;
+          strip.style.transform = `translateY(-${travel}%)`;
+        }, 20 + delay);
+
+        setTimeout(() => {
+          strip.classList.remove("spinning");
+        }, delay + baseDuration - 150);
+
+        setTimeout(() => {
+          remaining--;
+          if (remaining === 0) {
+            renderGrid(container, finalGrid, c, r, false);
+            resolve();
+          }
+        }, delay + baseDuration + 60);
       }
-      renderGrid(container, fakeGrid, c, r, false);
-      await sleep(90);
-    }
+    });
   }
 
-  async function playCascadeSequence(container, c, r, result) {
-    renderGrid(container, result.steps[0].grid, c, r, false);
-    await sleep(speed(260));
-
+  async function playCascadeFrom(container, c, r, result) {
     for (let i = 1; i < result.steps.length; i++) {
       const step = result.steps[i];
       const cells = step.removedCells.map((k) => k.split(",").map(Number));
       highlightCells(container, cells);
-      await sleep(speed(480));
+      await sleep(480);
       renderGrid(container, step.grid, c, r, true);
-      await sleep(speed(300));
+      await sleep(300);
     }
   }
 
@@ -138,7 +190,9 @@ if (player) {
         startingCascadeCount: runningCascadeCount,
       });
 
-      await playCascadeSequence(bonusReelWindow, BONUS_COLS, BONUS_ROWS, result);
+      await spinReveal(bonusReelWindow, BONUS_COLS, BONUS_ROWS, result.steps[0].grid);
+      await sleep(200);
+      await playCascadeFrom(bonusReelWindow, BONUS_COLS, BONUS_ROWS, result);
 
       const spinWin = Math.round(result.totalMultiplierUnits * lockedBet);
       bonusWinTotal += spinWin;
@@ -153,7 +207,7 @@ if (player) {
       document.getElementById("bonusMultiplier").textContent = highestMult + "x";
       document.getElementById("bonusWinTotal").textContent = Math.round(bonusWinTotal).toLocaleString();
 
-      await sleep(speed(350));
+      await sleep(350);
     }
 
     if (jackpotHit) bonusWinTotal += 2500;
@@ -185,21 +239,24 @@ if (player) {
     }
 
     isSpinning = true;
+    document.getElementById("btnSpinFloat").classList.add("disabled");
+
     const settings = drGetSettings();
     const c = cols();
     const r = rows();
 
-    await shuffleFlash(reelWindow, c, r, speed(500));
-
     const result = resolveSpin(c, r, settings, { flatMultiplier: 1, bonusMode: false });
-    await playCascadeSequence(reelWindow, c, r, result);
+
+    await spinReveal(reelWindow, c, r, result.steps[0].grid);
+    await sleep(200);
+    await playCascadeFrom(reelWindow, c, r, result);
 
     const winAmount = Math.round(result.totalMultiplierUnits * bet);
     settleStats(bet, winAmount);
     document.getElementById("hudWin").textContent = winAmount.toLocaleString();
     refreshHud();
 
-    const gotJackpot = await maybeInstantJackpot(settings);
+    await maybeInstantJackpot(settings);
 
     const freeSpinsAwarded = freeSpinsForJesterCount(result.initialJesterCount);
     if (freeSpinsAwarded > 0) {
@@ -207,58 +264,27 @@ if (player) {
     }
 
     isSpinning = false;
-
-    if (autoPlay && autoSpinsLeft > 0) {
-      autoSpinsLeft--;
-      if (autoSpinsLeft > 0 && player.credits >= bet) {
-        await sleep(speed(400));
-        playSpin();
-      } else {
-        autoPlay = false;
-      }
-    }
+    document.getElementById("btnSpinFloat").classList.remove("disabled");
   }
 
-  document.getElementById("btnSpin").addEventListener("click", () => playSpin());
+  document.getElementById("btnSpinFloat").addEventListener("click", () => playSpin());
 
-  document.getElementById("btnBet").addEventListener("click", () => {
+  document.getElementById("btnMinBetFloat").addEventListener("click", () => {
     if (isSpinning) return;
-    betIndex = Math.max(0, betIndex - 1);
+    betIndex = 0;
     refreshHud();
   });
 
-  document.getElementById("btnMegaWays").addEventListener("click", () => {
+  document.getElementById("btnMultiplierFloat").addEventListener("click", () => {
     if (isSpinning) return;
-    betIndex = Math.min(betLevels.length - 1, betIndex + 1);
+    betIndex = (betIndex + 1) % betLevels.length;
     refreshHud();
   });
 
-  document.getElementById("btnMaxBet").addEventListener("click", () => {
+  document.getElementById("btnMaxBetFloat").addEventListener("click", () => {
     if (isSpinning) return;
     betIndex = betLevels.length - 1;
     refreshHud();
-    playSpin();
-  });
-
-  document.getElementById("btnFastSpin").addEventListener("click", (e) => {
-    fastSpin = !fastSpin;
-    e.target.style.filter = fastSpin ? "brightness(1.6)" : "none";
-  });
-
-  document.getElementById("btnAutoPlay").addEventListener("click", (e) => {
-    if (autoPlay) {
-      autoPlay = false;
-      autoSpinsLeft = 0;
-      e.target.style.filter = "none";
-      return;
-    }
-    const input = prompt("Auto spins (10, 25, 50, 100, 500):", "10");
-    const n = parseInt(input, 10);
-    if (!n || n <= 0) return;
-    autoPlay = true;
-    autoSpinsLeft = n;
-    e.target.style.filter = "brightness(1.6)";
-    playSpin();
   });
 
   document.getElementById("btnPlayAgain").addEventListener("click", closeBonusEnd);

@@ -122,6 +122,28 @@ function applyGravity(grid, cols, rows) {
   }
 }
 
+/*
+  Guarantees zero winning clusters on a grid. Used when winProbability is
+  set to literal 0 — the honest weighted RNG still has to be forced here,
+  since random chance alone can occasionally form a cluster even with no
+  favorable bias applied.
+*/
+function suppressClusters(grid, cols, rows, minSize, settings) {
+  const nonWildIds = SYMBOL_SET.filter((s) => !s.isWild).map((s) => s.id);
+  let guard = 0;
+  while (guard < 200) {
+    const clusters = findClusters(grid, cols, rows, minSize);
+    if (clusters.length === 0) break;
+    for (const cluster of clusters) {
+      const [r, c] = cluster.cells[Math.floor(cluster.cells.length / 2)];
+      const currentId = grid[r][c];
+      const replacement = nonWildIds.find((id) => id !== currentId) || nonWildIds[0];
+      grid[r][c] = replacement;
+    }
+    guard++;
+  }
+}
+
 function countJesters(grid, cols, rows) {
   let count = 0;
   for (let r = 0; r < rows; r++) {
@@ -147,6 +169,9 @@ function resolveSpin(cols, rows, settings, options) {
 
   const minSize = settings.clusterMin || 5;
   let grid = generateGrid(cols, rows, settings);
+  if ((settings.winProbability || 0) <= 0) {
+    suppressClusters(grid, cols, rows, minSize, settings);
+  }
   const initialJesterCount = countJesters(grid, cols, rows);
 
   const steps = [{ grid: grid.map((row) => row.slice()), clusters: [] }];

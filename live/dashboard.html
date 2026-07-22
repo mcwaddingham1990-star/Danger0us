@@ -18,6 +18,11 @@
       your account.
     </div>
 
+    <div class="pending-banner" id="depositBanner" style="display:none;">
+      Your signup credits can't be redeemed until you've made a deposit.
+      Redemption unlocks automatically once a deposit is added to your account.
+    </div>
+
     <div class="stat-grid">
       <div class="stat-card">
         <div class="label">Time Playing</div>
@@ -63,6 +68,12 @@
     <div class="deposit-history">
       <div class="label">Your Redemption History</div>
       <div id="redemptionHistoryList"></div>
+    </div>
+
+    <div class="deposit-history">
+      <div class="label">Your Referral Code</div>
+      <div class="redeem-code" id="myReferralCode">—</div>
+      <p class="redeem-note">Share this with a friend — when they sign up with it, the admin will see it and can send you referral credits.</p>
     </div>
 
     <button class="btn-primary" id="goToGamesBtn">GO TO GAMES</button>
@@ -149,10 +160,17 @@
 
     if (!player.approved) {
       document.getElementById("pendingBanner").style.display = "block";
+    }
+    if (player.approved && !player.hasDeposited) {
+      document.getElementById("depositBanner").style.display = "block";
+    }
+    if (!player.approved || !player.hasDeposited) {
       document.getElementById("redeemAmount").disabled = true;
       document.getElementById("redeemBtn").disabled = true;
       document.getElementById("redeemBtn").classList.add("disabled");
     }
+
+    document.getElementById("myReferralCode").textContent = player.referralCode || "—";
 
     renderStats(player);
     await renderRedemptionHistory(player.id);
@@ -174,6 +192,10 @@
     }
     if (!currentPlayer.approved) {
       showMessage(msg, "Your account needs admin approval before you can redeem.", "error");
+      return;
+    }
+    if (!currentPlayer.hasDeposited) {
+      showMessage(msg, "You need to make a deposit before you can redeem credits.", "error");
       return;
     }
 

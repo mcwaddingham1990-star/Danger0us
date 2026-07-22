@@ -42,6 +42,14 @@
         <div class="field-error" id="confirmError"></div>
       </div>
 
+      <div class="field">
+        <label for="referralCode">Referral Code (optional)</label>
+        <div class="input-wrap">
+          <input type="text" id="referralCode" placeholder="Have a friend's code? Enter it here" autocomplete="off">
+        </div>
+        <div class="field-error" id="referralError"></div>
+      </div>
+
       <button type="submit" class="btn-primary">SIGN UP</button>
     </form>
 
@@ -71,15 +79,17 @@
     }
   }
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     const confirmPassword = document.getElementById("confirmPassword").value;
+    const referralCode = document.getElementById("referralCode").value.trim();
 
     const emailError = document.getElementById("emailError");
     const passwordError = document.getElementById("passwordError");
     const confirmError = document.getElementById("confirmError");
+    const referralError = document.getElementById("referralError");
 
     let valid = true;
 
@@ -104,6 +114,15 @@
       showFieldError(confirmError, "");
     }
 
+    showFieldError(referralError, "");
+    if (referralCode) {
+      const found = await drLookupReferralCode(referralCode);
+      if (!found) {
+        showFieldError(referralError, "That referral code wasn't found — check it, or leave it blank.");
+        valid = false;
+      }
+    }
+
     if (!valid) {
       showMessage(message, "Please fix the errors below.", "error");
       return;
@@ -111,7 +130,7 @@
 
     showMessage(message, "Creating account…", "success");
 
-    drSignUp(email, password)
+    drSignUp(email, password, referralCode)
       .then(() => {
         showMessage(message, "Account created. Redirecting…", "success");
         setTimeout(() => { window.location.href = "dashboard.html"; }, 600);

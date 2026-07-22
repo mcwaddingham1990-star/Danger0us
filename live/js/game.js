@@ -204,7 +204,7 @@ if (player) {
       spinsLeft--;
       document.getElementById("bonusSpinsLeft").textContent = spinsLeft;
 
-      const settings = await drGetSettings();
+      const settings = await drGetEffectiveSettings(player);
       const result = resolveSpin(BONUS_COLS, BONUS_ROWS, settings, {
         bonusMode: true,
         startingCascadeCount: runningCascadeCount,
@@ -271,7 +271,7 @@ if (player) {
     isSpinning = true;
     document.getElementById("btnSpinFloat").classList.add("disabled");
 
-    const settings = await drGetSettings();
+    const settings = await drGetEffectiveSettings(player);
     const c = cols();
     const r = rows();
 

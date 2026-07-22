@@ -22,9 +22,19 @@ service cloud.firestore {
       // Self-signup. The one designated admin email is the only email
       // allowed to create itself as role "admin" — everyone else gets the
       // standard new-player defaults. Keep this address in sync with
-      // DR_ADMIN_EMAIL in live/js/firebase-init.js.
+      // DR_ADMIN_EMAIL in live/js/firebase-init.js. A claimed referredBy
+      // must point at the real owner of the referredByCode, so a client
+      // can't fabricate credit for an arbitrary account.
       allow create: if isOwner(uid)
         && request.resource.data.email == request.auth.token.email
+        && request.resource.data.hasDeposited == false
+        && (
+          request.resource.data.referredBy == null
+          || (
+            exists(/databases/$(database)/documents/referralCodes/$(request.resource.data.referredByCode))
+            && get(/databases/$(database)/documents/referralCodes/$(request.resource.data.referredByCode)).data.uid == request.resource.data.referredBy
+          )
+        )
         && (
           (request.resource.data.email == 'm.c.waddingham1990@gmail.com'
             && request.resource.data.role == 'admin'
@@ -37,20 +47,57 @@ service cloud.firestore {
             && request.resource.data.credits == 500)
         );
 
-      // Admin can change anything (approve accounts, add credits).
-      // A player can only update their own doc, and only if role/approved/
-      // email don't change — this stops a player from self-approving or
-      // self-promoting to admin from devtools. Credits/stats are still
-      // player-writable because the game itself runs entirely client-side
-      // (no backend to referee spins), same trust model as before.
+      // Admin can change anything (approve accounts, add credits/deposits,
+      // set per-player game settings). A player can only update their own
+      // doc, and only if the account-identity/trust fields don't change —
+      // stops a player from self-approving, self-promoting to admin,
+      // faking a deposit to unlock redemption, rewriting who referred
+      // them, or loosening their own odds via settingsOverride. Credits/
+      // stats are still player-writable because the game itself runs
+      // entirely client-side (no backend to referee spins), same trust
+      // model as before.
       allow update: if isAdmin()
         || (
           isOwner(uid)
           && request.resource.data.role == resource.data.role
           && request.resource.data.approved == resource.data.approved
           && request.resource.data.email == resource.data.email
+          && request.resource.data.hasDeposited == resource.data.hasDeposited
+          && request.resource.data.referralCode == resource.data.referralCode
+          && request.resource.data.referredBy == resource.data.referredBy
+          && request.resource.data.referredByCode == resource.data.referredByCode
+          && request.resource.data.settingsOverride == resource.data.settingsOverride
         );
 
+      allow delete: if false;
+    }
+
+    // code -> {uid, email} lookup so a not-yet-signed-in signup form can
+    // resolve a referral code before creating the account. Only exposes
+    // what's already meant to be shared (the code itself, plus whichever
+    // email owns it) — no other player data. Direct-lookup only, no
+    // scanning the whole collection.
+    match /referralCodes/{code} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // One doc per successful referral signup, for the admin to see and
+    // manually reward. referrerUid must actually own the claimed code.
+    match /referrals/{id} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn()
+        && request.resource.data.newPlayerUid == request.auth.uid
+        && request.resource.data.rewarded == false
+        && exists(/databases/$(database)/documents/referralCodes/$(request.resource.data.code))
+        && get(/databases/$(database)/documents/referralCodes/$(request.resource.data.code)).data.uid == request.resource.data.referrerUid;
+      allow update: if isAdmin()
+        && request.resource.data.referrerUid == resource.data.referrerUid
+        && request.resource.data.newPlayerUid == resource.data.newPlayerUid
+        && request.resource.data.code == resource.data.code;
       allow delete: if false;
     }
 
@@ -62,12 +109,17 @@ service cloud.firestore {
     match /redemptions/{code} {
       allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
 
+      // Signup credits can't be redeemed until the player has an actual
+      // deposit on file — enforced here, not just in the UI, since the UI
+      // check alone is trivially bypassed from devtools.
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.status == 'pending'
         && request.resource.data.amount is number
-        && request.resource.data.amount > 0;
+        && request.resource.data.amount > 0
+        && get(/databases/$(database)/documents/players/$(request.auth.uid)).data.approved == true
+        && get(/databases/$(database)/documents/players/$(request.auth.uid)).data.hasDeposited == true;
 
       // Only admin can flip status (e.g. mark fulfilled); nothing else
       // about the redemption can change.

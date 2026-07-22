@@ -16,7 +16,10 @@
     <div class="section-label">Players (scroll to see more)</div>
     <div id="playerList"></div>
 
-    <div class="section-label">Game Settings</div>
+    <div class="section-label">Referrals</div>
+    <div id="referralList"></div>
+
+    <div class="section-label">Global Game Settings (default for all players)</div>
 
     <div class="setting-row">
       <label>Win Probability <span class="val" id="valWinProb">35%</span></label>
@@ -56,9 +59,20 @@
 <script src="js/data.js"></script>
 <script src="js/ticker.js"></script>
 <script>
+  const SETTINGS_FIELDS = [
+    { key: "winProbability", label: "Win Probability", suffix: "%", min: 0, max: 100 },
+    { key: "jesterRate", label: "Jester Appearance Rate", suffix: "%", min: 0, max: 100 },
+    { key: "avgFreeSpins", label: "Average Free Spins Awarded", suffix: "", min: 3, max: 50 },
+    { key: "multiplierFrequency", label: "Multiplier Frequency", suffix: "%", min: 0, max: 100 },
+    { key: "jackpotChance", label: "Mega Jackpot Chance", suffix: "%", min: 0, max: 100 },
+    { key: "clusterMin", label: "Cluster Size Requirement", suffix: "", min: 3, max: 10 },
+  ];
+
   async function renderPlayers() {
     const list = document.getElementById("playerList");
-    const [allPlayers, allRedemptions] = await Promise.all([drGetPlayers(), drGetRedemptions()]);
+    const [allPlayers, allRedemptions, globalSettings] = await Promise.all([
+      drGetPlayers(), drGetRedemptions(), drGetSettings(),
+    ]);
     const players = allPlayers.filter((p) => p.role !== "admin");
 
     if (players.length === 0) {
@@ -86,6 +100,16 @@
       `;
 
       const approved = !!p.approved;
+      const referredByPlayer = p.referredBy ? players.find((x) => x.id === p.referredBy) : null;
+      const referredCount = players.filter((x) => x.referredBy === p.id).length;
+      const effective = Object.assign({}, globalSettings, p.settingsOverride || {});
+
+      const settingsSlidersHtml = SETTINGS_FIELDS.map((f) => `
+        <div class="setting-row" data-key="${f.key}" data-suffix="${f.suffix}">
+          <label>${f.label} <span class="val">${effective[f.key]}${f.suffix}</span></label>
+          <input type="range" class="ovInput" min="${f.min}" max="${f.max}" value="${effective[f.key]}">
+        </div>
+      `).join("");
 
       return `
         <div class="player-row" data-uid="${p.id}">
@@ -100,17 +124,29 @@
             <div>Won: <b>${(p.creditsWon || 0).toLocaleString()}</b></div>
             <div>Lost: <b>${(p.creditsLost || 0).toLocaleString()}</b></div>
           </div>
+          <div class="mini-stats">
+            <div>Deposited: <b>${p.hasDeposited ? "Yes" : "No"}</b></div>
+            <div>Referral Code: <b>${p.referralCode || "—"}</b></div>
+            <div>Referred By: <b>${referredByPlayer ? referredByPlayer.email : "—"}</b></div>
+            <div>Referrals Made: <b>${referredCount}</b></div>
+          </div>
           ${approved ? "" : '<button class="approveBtn">Approve Account</button>'}
           <div class="add-credits-row">
             <input type="number" placeholder="Amount" class="creditInput" min="1">
-            <button class="addCreditsBtn">Add Credits</button>
+            <button class="depositBtn">Add Deposit</button>
+            <button class="bonusBtn">Add Bonus</button>
+          </div>
+          <button type="button" class="player-settings-toggle">Player Game Settings ▾</button>
+          <div class="player-settings-panel" style="display:none;">
+            ${settingsSlidersHtml}
+            <button type="button" class="resetSettingsBtn">Reset to Global Defaults</button>
           </div>
           ${redeemHtml}
         </div>
       `;
     }).join("");
 
-    list.querySelectorAll(".addCreditsBtn").forEach((btn) => {
+    list.querySelectorAll(".depositBtn").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         const row = e.target.closest(".player-row");
         const uid = row.dataset.uid;
@@ -118,7 +154,21 @@
         const amount = parseInt(input.value, 10);
         if (!amount || amount <= 0) return;
         btn.disabled = true;
-        await drAddCredits(uid, amount);
+        await drAddDeposit(uid, amount);
+        input.value = "";
+        await renderPlayers();
+      });
+    });
+
+    list.querySelectorAll(".bonusBtn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const row = e.target.closest(".player-row");
+        const uid = row.dataset.uid;
+        const input = row.querySelector(".creditInput");
+        const amount = parseInt(input.value, 10);
+        if (!amount || amount <= 0) return;
+        btn.disabled = true;
+        await drAddBonusCredits(uid, amount);
         input.value = "";
         await renderPlayers();
       });
@@ -139,6 +189,63 @@
         btn.disabled = true;
         await drApprovePlayer(row.dataset.uid);
         await renderPlayers();
+      });
+    });
+
+    list.querySelectorAll(".player-settings-toggle").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const row = e.target.closest(".player-row");
+        const panel = row.querySelector(".player-settings-panel");
+        panel.style.display = panel.style.display === "none" ? "block" : "none";
+      });
+    });
+
+    list.querySelectorAll(".ovInput").forEach((input) => {
+      const settingRow = input.closest(".setting-row");
+      const playerRow = input.closest(".player-row");
+      const uid = playerRow.dataset.uid;
+      const key = settingRow.dataset.key;
+      const suffix = settingRow.dataset.suffix;
+      input.addEventListener("input", () => {
+        settingRow.querySelector(".val").textContent = input.value + suffix;
+        drSetPlayerSettingsOverride(uid, { [key]: parseInt(input.value, 10) });
+      });
+    });
+
+    list.querySelectorAll(".resetSettingsBtn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const row = e.target.closest(".player-row");
+        btn.disabled = true;
+        await drResetPlayerSettings(row.dataset.uid);
+        await renderPlayers();
+      });
+    });
+  }
+
+  async function renderReferrals() {
+    const list = document.getElementById("referralList");
+    const referrals = await drGetReferrals();
+
+    if (referrals.length === 0) {
+      list.innerHTML = '<div class="player-row">No referrals yet.</div>';
+      return;
+    }
+
+    list.innerHTML = referrals.map((r) => `
+      <div class="redeem-row" data-id="${r.id}">
+        <span class="redeem-code-sm">${r.referrerEmail} → ${r.newPlayerEmail}</span>
+        <span class="redeem-amt-sm">${r.code}</span>
+        <span class="redeem-status ${r.rewarded ? "fulfilled" : "pending"}">${r.rewarded ? "rewarded" : "pending"}</span>
+        ${r.rewarded ? "" : '<button class="fulfillBtn">Mark Rewarded</button>'}
+      </div>
+    `).join("");
+
+    list.querySelectorAll(".fulfillBtn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const row = e.target.closest(".redeem-row");
+        btn.disabled = true;
+        await drMarkReferralRewarded(row.dataset.id);
+        await renderReferrals();
       });
     });
   }
@@ -166,6 +273,7 @@
     }
 
     await renderPlayers();
+    await renderReferrals();
     bindSetting("winProbability", "valWinProb", "%", "winProbability", true);
     bindSetting("jesterRate", "valJester", "%", "jesterRate", true);
     bindSetting("avgFreeSpins", "valFreeSpins", "", "avgFreeSpins", true);

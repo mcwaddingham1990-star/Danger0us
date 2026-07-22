@@ -1,8 +1,9 @@
 /*
   Shared data layer backed by Firebase: Firestore holds players, settings,
-  and redemptions (shared across every browser/device); Firebase
-  Authentication handles real sign-in. Requires js/firebase-init.js (and the
-  firebase-*-compat.js SDKs) to be loaded first.
+  redemptions, and referrals (shared across every browser/device);
+  Firebase Authentication handles real sign-in. Requires
+  js/firebase-init.js (and the firebase-*-compat.js SDKs) to be loaded
+  first.
 
   Every function here is async now — callers must await it.
 */
@@ -16,9 +17,9 @@ const DEFAULT_SETTINGS = {
   clusterMin: 5,           // minimum touching symbols to pay
 };
 
-function drPlayerDefaults(email) {
+function drPlayerDefaults(email, extra) {
   const isAdmin = email.toLowerCase() === DR_ADMIN_EMAIL.toLowerCase();
-  return {
+  return Object.assign({
     email,
     role: isAdmin ? "admin" : "player",
     approved: isAdmin,
@@ -29,7 +30,15 @@ function drPlayerDefaults(email) {
     creditsWon: 0,
     creditsLost: 0,
     createdAt: Date.now(),
-  };
+    // Signup credits can't be redeemed until a real deposit is on file.
+    hasDeposited: false,
+    // Referral program: every player gets their own shareable code.
+    referralCode: null,
+    referredBy: null,
+    referredByCode: null,
+    // Per-player overrides merged on top of the global settings doc.
+    settingsOverride: {},
+  }, extra || {});
 }
 
 // Resolves once Firebase Auth has reported the initial sign-in state.
@@ -76,11 +85,62 @@ async function drCurrentPlayer() {
   return drFindPlayerByUid(session.uid);
 }
 
-async function drSignUp(email, password) {
+function drGenerateReferralCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid confusion
+  let rand = "";
+  for (let i = 0; i < 8; i++) rand += chars[Math.floor(Math.random() * chars.length)];
+  return "REF-" + rand;
+}
+
+async function drLookupReferralCode(code) {
+  if (!code) return null;
+  const normalized = code.trim().toUpperCase();
+  if (!normalized) return null;
+  const doc = await drDb.collection("referralCodes").doc(normalized).get();
+  return doc.exists ? Object.assign({ code: normalized }, doc.data()) : null;
+}
+
+async function drSignUp(email, password, referralCode) {
+  let referrer = null;
+  if (referralCode) {
+    referrer = await drLookupReferralCode(referralCode);
+  }
+
   const cred = await drAuth.createUserWithEmailAndPassword(email, password);
-  const player = drPlayerDefaults(email);
-  await drDb.collection("players").doc(cred.user.uid).set(player);
-  return Object.assign({ id: cred.user.uid }, player);
+  const uid = cred.user.uid;
+  const ownCode = drGenerateReferralCode();
+
+  const player = drPlayerDefaults(email, {
+    referralCode: ownCode,
+    referredBy: referrer ? referrer.uid : null,
+    referredByCode: referrer ? referrer.code : null,
+  });
+
+  await drDb.collection("players").doc(uid).set(player);
+
+  try {
+    await drDb.collection("referralCodes").doc(ownCode).set({ uid, email });
+  } catch (e) {
+    console.error("Could not register referral code", e);
+  }
+
+  if (referrer) {
+    try {
+      await drDb.collection("referrals").add({
+        code: referrer.code,
+        referrerUid: referrer.uid,
+        referrerEmail: referrer.email,
+        newPlayerUid: uid,
+        newPlayerEmail: email,
+        createdAt: Date.now(),
+        rewarded: false,
+      });
+    } catch (e) {
+      console.error("Could not record referral", e);
+    }
+  }
+
+  return Object.assign({ id: uid }, player);
 }
 
 async function drSignIn(email, password) {
@@ -116,14 +176,31 @@ async function drApprovePlayer(uid) {
   await drDb.collection("players").doc(uid).update({ approved: true });
 }
 
-async function drAddCredits(uid, amount) {
+async function drAddDeposit(uid, amount) {
   const ref = drDb.collection("players").doc(uid);
   await drDb.runTransaction(async (tx) => {
     const doc = await tx.get(ref);
     if (!doc.exists) return;
     const data = doc.data();
     const depositHistory = (data.depositHistory || []).concat([
-      { amount, at: Date.now(), note: "Admin credit add" },
+      { amount, at: Date.now(), note: "Deposit" },
+    ]);
+    tx.update(ref, {
+      credits: (data.credits || 0) + amount,
+      depositHistory,
+      hasDeposited: true,
+    });
+  });
+}
+
+async function drAddBonusCredits(uid, amount, note) {
+  const ref = drDb.collection("players").doc(uid);
+  await drDb.runTransaction(async (tx) => {
+    const doc = await tx.get(ref);
+    if (!doc.exists) return;
+    const data = doc.data();
+    const depositHistory = (data.depositHistory || []).concat([
+      { amount, at: Date.now(), note: note || "Bonus credit" },
     ]);
     tx.update(ref, {
       credits: (data.credits || 0) + amount,
@@ -140,6 +217,24 @@ async function drGetSettings() {
 async function drSaveSettings(partial) {
   await drDb.collection("settings").doc("global").set(partial, { merge: true });
   return drGetSettings();
+}
+
+// Global settings with this specific player's overrides layered on top —
+// what the game engine should actually use when resolving that player's spins.
+async function drGetEffectiveSettings(player) {
+  const global = await drGetSettings();
+  const override = (player && player.settingsOverride) || {};
+  return Object.assign({}, global, override);
+}
+
+async function drSetPlayerSettingsOverride(uid, partial) {
+  const updates = {};
+  Object.keys(partial).forEach((k) => { updates["settingsOverride." + k] = partial[k]; });
+  await drDb.collection("players").doc(uid).update(updates);
+}
+
+async function drResetPlayerSettings(uid) {
+  await drDb.collection("players").doc(uid).update({ settingsOverride: {} });
 }
 
 async function drGetRedemptions() {
@@ -168,7 +263,7 @@ async function drCreateRedemption(uid, email, amount) {
     const doc = await tx.get(playerRef);
     if (!doc.exists) return null;
     const data = doc.data();
-    if (!data.approved || amount <= 0 || (data.credits || 0) < amount) return null;
+    if (!data.approved || !data.hasDeposited || amount <= 0 || (data.credits || 0) < amount) return null;
 
     tx.update(playerRef, { credits: data.credits - amount });
     const redemption = { code, uid, email, amount, status: "pending", createdAt: Date.now() };
@@ -179,4 +274,13 @@ async function drCreateRedemption(uid, email, amount) {
 
 async function drSetRedemptionStatus(code, status) {
   await drDb.collection("redemptions").doc(code).update({ status });
+}
+
+async function drGetReferrals() {
+  const snap = await drDb.collection("referrals").orderBy("createdAt", "desc").get();
+  return snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+}
+
+async function drMarkReferralRewarded(id) {
+  await drDb.collection("referrals").doc(id).update({ rewarded: true });
 }

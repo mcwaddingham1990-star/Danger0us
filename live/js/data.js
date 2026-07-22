@@ -117,6 +117,7 @@ function drCreatePlayer(email) {
     id: "p-" + Date.now(),
     email,
     role: "player",
+    approved: false,
     credits: 500,
     timePlayingMinutes: 0,
     depositHistory: [{ amount: 500, at: Date.now(), note: "Starting credits" }],
@@ -155,6 +156,13 @@ function drRequireSessionOrRedirect(redirectTo) {
   return session;
 }
 
+function drApprovePlayer(email) {
+  const player = drFindPlayer(email);
+  if (!player) return;
+  player.approved = true;
+  drUpsertPlayer(player);
+}
+
 function drAddCredits(email, amount) {
   const player = drFindPlayer(email);
   if (!player) return;
@@ -186,7 +194,7 @@ function drGenerateRedeemCode() {
 
 function drCreateRedemption(email, amount) {
   const player = drFindPlayer(email);
-  if (!player || amount <= 0 || player.credits < amount) return null;
+  if (!player || !player.approved || amount <= 0 || player.credits < amount) return null;
 
   player.credits -= amount;
   drUpsertPlayer(player);

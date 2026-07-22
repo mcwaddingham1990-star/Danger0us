@@ -87,9 +87,14 @@
         </div>
       `;
 
+      const approved = !!p.approved;
+
       return `
         <div class="player-row" data-email="${p.email}">
-          <div class="email">${p.email}</div>
+          <div class="email">
+            ${p.email}
+            <span class="approval-badge ${approved ? "approved" : "pending"}">${approved ? "Approved" : "Pending"}</span>
+          </div>
           <div class="mini-stats">
             <div>Time: <b>${p.timePlayingMinutes || 0}m</b></div>
             <div>Credits: <b>${(p.credits || 0).toLocaleString()}</b></div>
@@ -97,6 +102,7 @@
             <div>Won: <b>${(p.creditsWon || 0).toLocaleString()}</b></div>
             <div>Lost: <b>${(p.creditsLost || 0).toLocaleString()}</b></div>
           </div>
+          ${approved ? "" : '<button class="approveBtn">Approve Account</button>'}
           <div class="add-credits-row">
             <input type="number" placeholder="Amount" class="creditInput" min="1">
             <button class="addCreditsBtn">Add Credits</button>
@@ -123,6 +129,14 @@
       btn.addEventListener("click", (e) => {
         const row = e.target.closest(".redeem-row");
         drSetRedemptionStatus(row.dataset.code, "fulfilled");
+        renderPlayers();
+      });
+    });
+
+    list.querySelectorAll(".approveBtn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const row = e.target.closest(".player-row");
+        drApprovePlayer(row.dataset.email);
         renderPlayers();
       });
     });

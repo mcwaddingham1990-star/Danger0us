@@ -12,6 +12,12 @@
   <div class="scroll-panel">
     <h1>YOUR STATS</h1>
 
+    <div class="pending-banner" id="pendingBanner" style="display:none;">
+      Your account is pending admin approval. You can play in demo mode
+      now, but you won't be able to redeem credits until an admin approves
+      your account.
+    </div>
+
     <div class="stat-grid">
       <div class="stat-card">
         <div class="label">Time Playing</div>
@@ -91,6 +97,13 @@
       if (player.role === "admin") {
         window.location.href = "admin.html";
       } else {
+        if (!player.approved) {
+          document.getElementById("pendingBanner").style.display = "block";
+          document.getElementById("redeemAmount").disabled = true;
+          document.getElementById("redeemBtn").disabled = true;
+          document.getElementById("redeemBtn").classList.add("disabled");
+        }
+
         document.getElementById("statTime").textContent = (player.timePlayingMinutes || 0) + "m";
         document.getElementById("statCredits").textContent = (player.credits || 0).toLocaleString();
         document.getElementById("statPlayed").textContent = (player.creditsPlayed || 0).toLocaleString();
@@ -140,6 +153,10 @@
     }
     if (amount > player.credits) {
       showMessage(msg, "You don't have that many credits.", "error");
+      return;
+    }
+    if (!player.approved) {
+      showMessage(msg, "Your account needs admin approval before you can redeem.", "error");
       return;
     }
 

@@ -14,6 +14,41 @@
   word-break: break-all;
 }
 
+.approval-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.approval-badge.approved {
+  background: rgba(46, 160, 90, 0.2);
+  color: #a9f0c0;
+}
+
+.approval-badge.pending {
+  background: rgba(230, 170, 40, 0.2);
+  color: #ffcf6b;
+}
+
+.approveBtn {
+  width: 100%;
+  padding: 9px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(230, 170, 40, 0.5);
+  border-radius: 8px;
+  background: rgba(230, 170, 40, 0.15);
+  color: #ffd98a;
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
 .player-row .mini-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;

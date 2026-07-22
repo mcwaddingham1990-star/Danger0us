@@ -44,7 +44,7 @@ service cloud.firestore {
           (request.resource.data.email != 'm.c.waddingham1990@gmail.com'
             && request.resource.data.role == 'player'
             && request.resource.data.approved == false
-            && request.resource.data.credits == 500)
+            && request.resource.data.credits == 100)
         );
 
       // Admin can change anything (approve accounts, add credits/deposits,

@@ -63,7 +63,13 @@ service cloud.firestore {
           && request.resource.data.approved == resource.data.approved
           && request.resource.data.email == resource.data.email
           && request.resource.data.hasDeposited == resource.data.hasDeposited
-          && request.resource.data.referralCode == resource.data.referralCode
+          // referralCode may only go from unset to set once (self-heals
+          // accounts created before this field existed) — never changed
+          // once it has a value.
+          && (
+            request.resource.data.referralCode == resource.data.referralCode
+            || (resource.data.referralCode == null && request.resource.data.referralCode is string)
+          )
           && request.resource.data.referredBy == resource.data.referredBy
           && request.resource.data.referredByCode == resource.data.referredByCode
           && request.resource.data.settingsOverride == resource.data.settingsOverride

@@ -82,7 +82,26 @@ async function drFindPlayerByUid(uid) {
 async function drCurrentPlayer() {
   const session = await drGetSession();
   if (!session) return null;
-  return drFindPlayerByUid(session.uid);
+  const player = await drFindPlayerByUid(session.uid);
+  if (!player) return null;
+  return drEnsureReferralCode(player);
+}
+
+// Self-heals accounts that ended up without a referral code — either
+// created before this feature existed, or created via the drSignIn
+// missing-profile fallback (which doesn't mint one). Safe to call on
+// every load: no-ops once the code is set.
+async function drEnsureReferralCode(player) {
+  if (player.referralCode) return player;
+  const code = drGenerateReferralCode();
+  try {
+    await drDb.collection("players").doc(player.id).update({ referralCode: code });
+    await drDb.collection("referralCodes").doc(code).set({ uid: player.id, email: player.email });
+    player.referralCode = code;
+  } catch (e) {
+    console.error("Could not backfill referral code", e);
+  }
+  return player;
 }
 
 function drGenerateReferralCode() {

@@ -189,7 +189,7 @@ function resolveSpin(cols, rows, settings, options) {
       removedCells: Array.from(removedCells),
     });
 
-    if (cascadeCount > 40) break; // safety valve
+    if (cascadeCount > 15) break; // safety valve — stop runaway snowballing in one spin
   }
 
   return {

@@ -13,11 +13,11 @@ const DR_KEYS = {
 };
 
 const DEFAULT_SETTINGS = {
-  winProbability: 35,      // 0-100, chance-weighted RNG favors clusters forming
-  jesterRate: 8,           // 0-100, how often jester/wild symbols appear
+  winProbability: 10,      // 0-100, chance-weighted RNG favors clusters forming
+  jesterRate: 3,           // 0-100, how often jester/wild symbols appear
   avgFreeSpins: 15,        // baseline free spins on trigger
   multiplierFrequency: 50, // 0-100, how fast the cascade multiplier climbs
-  jackpotChance: 1,        // 0-100
+  jackpotChance: 0.3,      // 0-100
   clusterMin: 5,           // minimum touching symbols to pay
   columns: 8,
   rows: 10,

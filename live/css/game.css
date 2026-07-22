@@ -20,20 +20,20 @@ html, body {
   position: relative;
   width: 100%;
   aspect-ratio: 841 / 1870;
-  background-image: url('../images/dash.screens/cabinet-blue-normal.png');
+  background-image: url('../images/dash.screens/cabinet-blue-wide.png');
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
 
 .reel-window {
   position: absolute;
-  left: 17.8%;
-  right: 17.8%;
-  top: 33%;
-  height: 44.3%;
+  left: 6%;
+  right: 6%;
+  top: 35%;
+  height: 34.5%;
   display: grid;
   gap: 1px;
-  padding: 1.2%;
+  padding: 0.6%;
 }
 
 .tile {

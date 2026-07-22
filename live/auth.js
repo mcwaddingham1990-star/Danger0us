@@ -26,10 +26,6 @@ function showFieldError(el, text) {
   el.classList.add("show");
 }
 
-function setSession(email) {
-  localStorage.setItem("dr_session", JSON.stringify({ email, at: Date.now() }));
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".toggle-visibility").forEach(wireVisibilityToggle);
 });

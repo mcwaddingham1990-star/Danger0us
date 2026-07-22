@@ -1,5 +1,6 @@
-const session = drRequireSessionOrRedirect("signin.html");
-let player = session ? drCurrentPlayer() : null;
+(async () => {
+const session = await drRequireSessionOrRedirect("signin.html");
+let player = session ? await drCurrentPlayer() : null;
 
 if (player) {
   const cols = () => GRID_COLS;
@@ -163,14 +164,14 @@ if (player) {
     player.creditsPlayed = (player.creditsPlayed || 0) + betAmount;
     player.creditsWon = (player.creditsWon || 0) + winAmount;
     player.creditsLost = (player.creditsLost || 0) + Math.max(0, betAmount - winAmount);
-    drUpsertPlayer(player);
+    drUpsertPlayer(player).catch(console.error);
   }
 
   async function maybeInstantJackpot(settings) {
     if (Math.random() * 100 < (settings.jackpotChance || 0)) {
       player.credits += 2500;
       player.creditsWon = (player.creditsWon || 0) + 2500;
-      drUpsertPlayer(player);
+      drUpsertPlayer(player).catch(console.error);
       refreshHud();
       DrAudio.jackpot();
       showWinFlash("MEGA JACKPOT! +2500", "jackpot");
@@ -203,7 +204,7 @@ if (player) {
       spinsLeft--;
       document.getElementById("bonusSpinsLeft").textContent = spinsLeft;
 
-      const settings = drGetSettings();
+      const settings = await drGetSettings();
       const result = resolveSpin(BONUS_COLS, BONUS_ROWS, settings, {
         bonusMode: true,
         startingCascadeCount: runningCascadeCount,
@@ -243,7 +244,7 @@ if (player) {
 
     player.credits += bonusWinTotal;
     player.creditsWon = (player.creditsWon || 0) + bonusWinTotal;
-    drUpsertPlayer(player);
+    drUpsertPlayer(player).catch(console.error);
     refreshHud();
 
     bonusPlayEl.classList.remove("show");
@@ -270,7 +271,7 @@ if (player) {
     isSpinning = true;
     document.getElementById("btnSpinFloat").classList.add("disabled");
 
-    const settings = drGetSettings();
+    const settings = await drGetSettings();
     const c = cols();
     const r = rows();
 
@@ -339,10 +340,11 @@ if (player) {
     const minutes = Math.round((now - lastTimeSave) / 60000);
     if (minutes > 0) {
       player.timePlayingMinutes = (player.timePlayingMinutes || 0) + minutes;
-      drUpsertPlayer(player);
+      drUpsertPlayer(player).catch(console.error);
       lastTimeSave = now;
     }
   }
   setInterval(saveTimePlaying, 20000);
   window.addEventListener("beforeunload", saveTimePlaying);
 }
+})();

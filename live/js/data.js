@@ -1,17 +1,11 @@
 /*
-  Shared client-side data layer for the Dangerous Rides prototype.
-  Everything here is stored in localStorage, scoped to one browser.
-  There is no server, so credits/settings are NOT shared across devices
-  or between a real player and a real admin on different machines yet —
-  this is a front-end prototype pending a real backend.
-*/
+  Shared data layer backed by Firebase: Firestore holds players, settings,
+  and redemptions (shared across every browser/device); Firebase
+  Authentication handles real sign-in. Requires js/firebase-init.js (and the
+  firebase-*-compat.js SDKs) to be loaded first.
 
-const DR_KEYS = {
-  session: "dr_session",
-  players: "dr_players",
-  settings: "dr_settings",
-  redemptions: "dr_redemptions",
-};
+  Every function here is async now — callers must await it.
+*/
 
 const DEFAULT_SETTINGS = {
   winProbability: 10,      // 0-100, chance-weighted RNG favors clusters forming
@@ -22,133 +16,39 @@ const DEFAULT_SETTINGS = {
   clusterMin: 5,           // minimum touching symbols to pay
 };
 
-const SEED_ADMIN = {
-  id: "admin-1",
-  email: "WastedDrops1990",
-  password: "Heather722!",
-  role: "admin",
-  credits: 0,
-  timePlayingMinutes: 0,
-  depositHistory: [],
-  creditsPlayed: 0,
-  creditsWon: 0,
-  creditsLost: 0,
-};
-
-function drLoad(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw);
-  } catch (e) {
-    return fallback;
-  }
-}
-
-function drSave(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function drEnsureSeeded() {
-  let players = drLoad(DR_KEYS.players, null);
-  if (!players) {
-    players = [SEED_ADMIN];
-    drSave(DR_KEYS.players, players);
-  } else {
-    const idx = players.findIndex((p) => p.id === "admin-1");
-    if (idx >= 0) {
-      if (players[idx].email !== SEED_ADMIN.email || players[idx].password !== SEED_ADMIN.password) {
-        players[idx] = Object.assign({}, players[idx], {
-          email: SEED_ADMIN.email,
-          password: SEED_ADMIN.password,
-          role: "admin",
-        });
-        drSave(DR_KEYS.players, players);
-      }
-    } else {
-      players.push(SEED_ADMIN);
-      drSave(DR_KEYS.players, players);
-    }
-  }
-  let settings = drLoad(DR_KEYS.settings, null);
-  if (!settings) {
-    drSave(DR_KEYS.settings, DEFAULT_SETTINGS);
-  }
-}
-
-function drGetSettings() {
-  drEnsureSeeded();
-  return Object.assign({}, DEFAULT_SETTINGS, drLoad(DR_KEYS.settings, {}));
-}
-
-function drSaveSettings(partial) {
-  const current = drGetSettings();
-  const next = Object.assign({}, current, partial);
-  drSave(DR_KEYS.settings, next);
-  return next;
-}
-
-function drGetPlayers() {
-  drEnsureSeeded();
-  return drLoad(DR_KEYS.players, []);
-}
-
-function drSavePlayers(players) {
-  drSave(DR_KEYS.players, players);
-}
-
-function drFindPlayer(email) {
-  return drGetPlayers().find((p) => p.email.toLowerCase() === email.toLowerCase());
-}
-
-function drUpsertPlayer(player) {
-  const players = drGetPlayers();
-  const idx = players.findIndex((p) => p.email.toLowerCase() === player.email.toLowerCase());
-  if (idx >= 0) {
-    players[idx] = Object.assign({}, players[idx], player);
-  } else {
-    players.push(player);
-  }
-  drSavePlayers(players);
-}
-
-function drCreatePlayer(email) {
-  const player = {
-    id: "p-" + Date.now(),
+function drPlayerDefaults(email) {
+  const isAdmin = email.toLowerCase() === DR_ADMIN_EMAIL.toLowerCase();
+  return {
     email,
-    role: "player",
-    approved: false,
-    credits: 500,
+    role: isAdmin ? "admin" : "player",
+    approved: isAdmin,
+    credits: isAdmin ? 0 : 500,
     timePlayingMinutes: 0,
-    depositHistory: [{ amount: 500, at: Date.now(), note: "Starting credits" }],
+    depositHistory: isAdmin ? [] : [{ amount: 500, at: Date.now(), note: "Starting credits" }],
     creditsPlayed: 0,
     creditsWon: 0,
     creditsLost: 0,
+    createdAt: Date.now(),
   };
-  drUpsertPlayer(player);
-  return player;
 }
 
-function drGetSession() {
-  return drLoad(DR_KEYS.session, null);
+// Resolves once Firebase Auth has reported the initial sign-in state.
+let _drAuthResolve;
+const drAuthReady = new Promise((res) => { _drAuthResolve = res; });
+drAuth.onAuthStateChanged((user) => {
+  if (_drAuthResolve) {
+    _drAuthResolve(user);
+    _drAuthResolve = null;
+  }
+});
+
+async function drGetSession() {
+  const user = await drAuthReady;
+  return user ? { uid: user.uid, email: user.email } : null;
 }
 
-function drSetSession(email) {
-  drSave(DR_KEYS.session, { email, at: Date.now() });
-}
-
-function drClearSession() {
-  localStorage.removeItem(DR_KEYS.session);
-}
-
-function drCurrentPlayer() {
-  const session = drGetSession();
-  if (!session) return null;
-  return drFindPlayer(session.email) || null;
-}
-
-function drRequireSessionOrRedirect(redirectTo) {
-  const session = drGetSession();
+async function drRequireSessionOrRedirect(redirectTo) {
+  const session = await drGetSession();
   if (!session) {
     window.location.href = redirectTo || "signin.html";
     return null;
@@ -156,69 +56,127 @@ function drRequireSessionOrRedirect(redirectTo) {
   return session;
 }
 
-function drApprovePlayer(email) {
-  const player = drFindPlayer(email);
-  if (!player) return;
-  player.approved = true;
-  drUpsertPlayer(player);
+async function drClearSession() {
+  await drAuth.signOut();
 }
 
-function drAddCredits(email, amount) {
-  const player = drFindPlayer(email);
-  if (!player) return;
-  player.credits = (player.credits || 0) + amount;
-  player.depositHistory = player.depositHistory || [];
-  player.depositHistory.push({ amount, at: Date.now(), note: "Admin credit add" });
-  drUpsertPlayer(player);
+function drPlayerFromDoc(doc) {
+  if (!doc.exists) return null;
+  return Object.assign({ id: doc.id }, doc.data());
 }
 
-function drGetRedemptions() {
-  return drLoad(DR_KEYS.redemptions, []);
+async function drFindPlayerByUid(uid) {
+  const doc = await drDb.collection("players").doc(uid).get();
+  return drPlayerFromDoc(doc);
 }
 
-function drSaveRedemptions(list) {
-  drSave(DR_KEYS.redemptions, list);
+async function drCurrentPlayer() {
+  const session = await drGetSession();
+  if (!session) return null;
+  return drFindPlayerByUid(session.uid);
+}
+
+async function drSignUp(email, password) {
+  const cred = await drAuth.createUserWithEmailAndPassword(email, password);
+  const player = drPlayerDefaults(email);
+  await drDb.collection("players").doc(cred.user.uid).set(player);
+  return Object.assign({ id: cred.user.uid }, player);
+}
+
+async function drSignIn(email, password) {
+  const cred = await drAuth.signInWithEmailAndPassword(email, password);
+  let player = await drFindPlayerByUid(cred.user.uid);
+  if (!player) {
+    // Auth account exists but the Firestore profile is missing somehow —
+    // recreate it so the app doesn't dead-end.
+    const defaults = drPlayerDefaults(email);
+    await drDb.collection("players").doc(cred.user.uid).set(defaults);
+    player = Object.assign({ id: cred.user.uid }, defaults);
+  }
+  return player;
+}
+
+async function drSendPasswordReset(email) {
+  await drAuth.sendPasswordResetEmail(email);
+}
+
+async function drGetPlayers() {
+  const snap = await drDb.collection("players").get();
+  return snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+}
+
+async function drUpsertPlayer(player) {
+  const data = Object.assign({}, player);
+  const id = data.id;
+  delete data.id;
+  await drDb.collection("players").doc(id).set(data, { merge: true });
+}
+
+async function drApprovePlayer(uid) {
+  await drDb.collection("players").doc(uid).update({ approved: true });
+}
+
+async function drAddCredits(uid, amount) {
+  const ref = drDb.collection("players").doc(uid);
+  await drDb.runTransaction(async (tx) => {
+    const doc = await tx.get(ref);
+    if (!doc.exists) return;
+    const data = doc.data();
+    const depositHistory = (data.depositHistory || []).concat([
+      { amount, at: Date.now(), note: "Admin credit add" },
+    ]);
+    tx.update(ref, {
+      credits: (data.credits || 0) + amount,
+      depositHistory,
+    });
+  });
+}
+
+async function drGetSettings() {
+  const doc = await drDb.collection("settings").doc("global").get();
+  return Object.assign({}, DEFAULT_SETTINGS, doc.exists ? doc.data() : {});
+}
+
+async function drSaveSettings(partial) {
+  await drDb.collection("settings").doc("global").set(partial, { merge: true });
+  return drGetSettings();
+}
+
+async function drGetRedemptions() {
+  const snap = await drDb.collection("redemptions").get();
+  return snap.docs.map((d) => d.data());
+}
+
+async function drGetMyRedemptions(uid) {
+  const snap = await drDb.collection("redemptions").where("uid", "==", uid).get();
+  return snap.docs.map((d) => d.data());
 }
 
 function drGenerateRedeemCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid confusion
-  const existing = new Set(drGetRedemptions().map((r) => r.code));
-  let code;
-  do {
-    let rand = "";
-    for (let i = 0; i < 8; i++) rand += chars[Math.floor(Math.random() * chars.length)];
-    code = "DR-" + rand;
-  } while (existing.has(code));
-  return code;
+  let rand = "";
+  for (let i = 0; i < 8; i++) rand += chars[Math.floor(Math.random() * chars.length)];
+  return "DR-" + rand;
 }
 
-function drCreateRedemption(email, amount) {
-  const player = drFindPlayer(email);
-  if (!player || !player.approved || amount <= 0 || player.credits < amount) return null;
+async function drCreateRedemption(uid, email, amount) {
+  const code = drGenerateRedeemCode();
+  const playerRef = drDb.collection("players").doc(uid);
+  const redemptionRef = drDb.collection("redemptions").doc(code);
 
-  player.credits -= amount;
-  drUpsertPlayer(player);
+  return drDb.runTransaction(async (tx) => {
+    const doc = await tx.get(playerRef);
+    if (!doc.exists) return null;
+    const data = doc.data();
+    if (!data.approved || amount <= 0 || (data.credits || 0) < amount) return null;
 
-  const redemption = {
-    code: drGenerateRedeemCode(),
-    email,
-    amount,
-    status: "pending",
-    createdAt: Date.now(),
-  };
-  const list = drGetRedemptions();
-  list.push(redemption);
-  drSaveRedemptions(list);
-  return redemption;
+    tx.update(playerRef, { credits: data.credits - amount });
+    const redemption = { code, uid, email, amount, status: "pending", createdAt: Date.now() };
+    tx.set(redemptionRef, redemption);
+    return redemption;
+  });
 }
 
-function drSetRedemptionStatus(code, status) {
-  const list = drGetRedemptions();
-  const idx = list.findIndex((r) => r.code === code);
-  if (idx >= 0) {
-    list[idx].status = status;
-    drSaveRedemptions(list);
-  }
+async function drSetRedemptionStatus(code, status) {
+  await drDb.collection("redemptions").doc(code).update({ status });
 }
-
-drEnsureSeeded();

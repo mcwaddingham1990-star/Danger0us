@@ -87,62 +87,79 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/firebase-init.js"></script>
 <script src="js/data.js"></script>
 <script src="js/ticker.js"></script>
 <script>
-  const session = drRequireSessionOrRedirect("signin.html");
-  if (session) {
-    const player = drCurrentPlayer();
-    if (player) {
-      if (player.role === "admin") {
-        window.location.href = "admin.html";
-      } else {
-        if (!player.approved) {
-          document.getElementById("pendingBanner").style.display = "block";
-          document.getElementById("redeemAmount").disabled = true;
-          document.getElementById("redeemBtn").disabled = true;
-          document.getElementById("redeemBtn").classList.add("disabled");
-        }
+  let currentPlayer = null;
 
-        document.getElementById("statTime").textContent = (player.timePlayingMinutes || 0) + "m";
-        document.getElementById("statCredits").textContent = (player.credits || 0).toLocaleString();
-        document.getElementById("statPlayed").textContent = (player.creditsPlayed || 0).toLocaleString();
-        document.getElementById("statWon").textContent = (player.creditsWon || 0).toLocaleString();
-        document.getElementById("statLost").textContent = (player.creditsLost || 0).toLocaleString();
+  function renderStats(player) {
+    document.getElementById("statTime").textContent = (player.timePlayingMinutes || 0) + "m";
+    document.getElementById("statCredits").textContent = (player.credits || 0).toLocaleString();
+    document.getElementById("statPlayed").textContent = (player.creditsPlayed || 0).toLocaleString();
+    document.getElementById("statWon").textContent = (player.creditsWon || 0).toLocaleString();
+    document.getElementById("statLost").textContent = (player.creditsLost || 0).toLocaleString();
 
-        const list = document.getElementById("depositList");
-        const history = player.depositHistory || [];
-        if (history.length === 0) {
-          list.innerHTML = '<div class="deposit-row"><span>No deposits yet</span></div>';
-        } else {
-          list.innerHTML = history.slice().reverse().map((d) => {
-            const date = new Date(d.at).toLocaleDateString();
-            return `<div class="deposit-row"><span>${d.note || "Deposit"} — ${date}</span><span class="amt">+${d.amount}</span></div>`;
-          }).join("");
-        }
-
-        renderRedemptionHistory(player.email);
-      }
+    const list = document.getElementById("depositList");
+    const history = player.depositHistory || [];
+    if (history.length === 0) {
+      list.innerHTML = '<div class="deposit-row"><span>No deposits yet</span></div>';
+    } else {
+      list.innerHTML = history.slice().reverse().map((d) => {
+        const date = new Date(d.at).toLocaleDateString();
+        return `<div class="deposit-row"><span>${d.note || "Deposit"} — ${date}</span><span class="amt">+${d.amount}</span></div>`;
+      }).join("");
     }
   }
 
-  function renderRedemptionHistory(email) {
+  async function renderRedemptionHistory(uid) {
     const box = document.getElementById("redemptionHistoryList");
-    const mine = drGetRedemptions().filter((r) => r.email.toLowerCase() === email.toLowerCase());
+    const mine = await drGetMyRedemptions(uid);
     if (mine.length === 0) {
       box.innerHTML = '<div class="deposit-row"><span>No redemptions yet</span></div>';
       return;
     }
-    box.innerHTML = mine.slice().reverse().map((r) => {
+    box.innerHTML = mine.slice().sort((a, b) => b.createdAt - a.createdAt).map((r) => {
       const date = new Date(r.createdAt).toLocaleDateString();
       const statusLabel = r.status === "fulfilled" ? "Fulfilled" : "Pending";
       return `<div class="deposit-row"><span>${r.code} — ${date} (${statusLabel})</span><span class="amt">${r.amount}</span></div>`;
     }).join("");
   }
 
-  document.getElementById("redeemBtn").addEventListener("click", () => {
-    const player = drCurrentPlayer();
+  function showMessage(el, text, kind) {
+    el.textContent = text;
+    el.className = "form-message show " + kind;
+  }
+
+  (async () => {
+    const session = await drRequireSessionOrRedirect("signin.html");
+    if (!session) return;
+    const player = await drCurrentPlayer();
     if (!player) return;
+
+    if (player.role === "admin") {
+      window.location.href = "admin.html";
+      return;
+    }
+
+    currentPlayer = player;
+
+    if (!player.approved) {
+      document.getElementById("pendingBanner").style.display = "block";
+      document.getElementById("redeemAmount").disabled = true;
+      document.getElementById("redeemBtn").disabled = true;
+      document.getElementById("redeemBtn").classList.add("disabled");
+    }
+
+    renderStats(player);
+    await renderRedemptionHistory(player.id);
+  })();
+
+  document.getElementById("redeemBtn").addEventListener("click", async () => {
+    if (!currentPlayer) return;
     const input = document.getElementById("redeemAmount");
     const msg = document.getElementById("redeemMessage");
     const amount = parseInt(input.value, 10);
@@ -151,16 +168,16 @@
       showMessage(msg, "Enter a valid amount.", "error");
       return;
     }
-    if (amount > player.credits) {
+    if (amount > currentPlayer.credits) {
       showMessage(msg, "You don't have that many credits.", "error");
       return;
     }
-    if (!player.approved) {
+    if (!currentPlayer.approved) {
       showMessage(msg, "Your account needs admin approval before you can redeem.", "error");
       return;
     }
 
-    const redemption = drCreateRedemption(player.email, amount);
+    const redemption = await drCreateRedemption(currentPlayer.id, currentPlayer.email, amount);
     if (!redemption) {
       showMessage(msg, "Redemption failed — try again.", "error");
       return;
@@ -171,18 +188,13 @@
     document.getElementById("redeemCodeBox").style.display = "block";
     document.getElementById("redeemCodeText").textContent = redemption.code;
 
-    const updated = drFindPlayer(player.email);
-    document.getElementById("statCredits").textContent = Math.round(updated.credits).toLocaleString();
-    renderRedemptionHistory(player.email);
+    currentPlayer = await drCurrentPlayer();
+    document.getElementById("statCredits").textContent = Math.round(currentPlayer.credits).toLocaleString();
+    await renderRedemptionHistory(currentPlayer.id);
   });
 
-  function showMessage(el, text, kind) {
-    el.textContent = text;
-    el.className = "form-message show " + kind;
-  }
-
-  document.getElementById("signOutBtn").addEventListener("click", () => {
-    drClearSession();
+  document.getElementById("signOutBtn").addEventListener("click", async () => {
+    await drClearSession();
     window.location.href = "signin.html";
   });
 

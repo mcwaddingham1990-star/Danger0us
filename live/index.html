@@ -3,15 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <title>Dangerous Rides</title>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/firebase-init.js"></script>
 <script src="js/data.js"></script>
 <script>
-  const session = drGetSession();
-  if (session) {
-    const player = drCurrentPlayer();
-    window.location.replace(player && player.role === "admin" ? "admin.html" : "dashboard.html");
-  } else {
-    window.location.replace("signin.html");
-  }
+  (async () => {
+    const session = await drGetSession();
+    if (session) {
+      const player = await drCurrentPlayer();
+      window.location.replace(player && player.role === "admin" ? "admin.html" : "dashboard.html");
+    } else {
+      window.location.replace("signin.html");
+    }
+  })();
 </script>
 </head>
 <body></body>

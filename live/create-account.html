@@ -51,12 +51,25 @@
 
 <div id="tickerBar" class="ticker-bar"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/firebase-init.js"></script>
 <script src="js/data.js"></script>
 <script src="auth.js"></script>
 <script src="js/ticker.js"></script>
 <script>
   const form = document.getElementById("signupForm");
   const message = document.getElementById("formMessage");
+
+  function mapAuthError(err) {
+    switch (err.code) {
+      case "auth/email-already-in-use": return "An account with that email already exists.";
+      case "auth/invalid-email": return "Enter a valid email address.";
+      case "auth/weak-password": return "Password must be at least 8 characters.";
+      default: return "Account creation failed. Please try again.";
+    }
+  }
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -96,10 +109,16 @@
       return;
     }
 
-    drCreatePlayer(email);
-    drSetSession(email);
-    showMessage(message, "Account created. Redirecting…", "success");
-    setTimeout(() => { window.location.href = "dashboard.html"; }, 600);
+    showMessage(message, "Creating account…", "success");
+
+    drSignUp(email, password)
+      .then(() => {
+        showMessage(message, "Account created. Redirecting…", "success");
+        setTimeout(() => { window.location.href = "dashboard.html"; }, 600);
+      })
+      .catch((err) => {
+        showMessage(message, mapAuthError(err), "error");
+      });
   });
 
   startTicker(document.getElementById("tickerBar"));

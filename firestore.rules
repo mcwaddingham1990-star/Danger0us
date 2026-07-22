@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/players/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/players/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /players/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Self-signup. The one designated admin email is the only email
+      // allowed to create itself as role "admin" — everyone else gets the
+      // standard new-player defaults. Keep this address in sync with
+      // DR_ADMIN_EMAIL in live/js/firebase-init.js.
+      allow create: if isOwner(uid)
+        && request.resource.data.email == request.auth.token.email
+        && (
+          (request.resource.data.email == 'm.c.waddingham1990@gmail.com'
+            && request.resource.data.role == 'admin'
+            && request.resource.data.approved == true
+            && request.resource.data.credits == 0)
+          ||
+          (request.resource.data.email != 'm.c.waddingham1990@gmail.com'
+            && request.resource.data.role == 'player'
+            && request.resource.data.approved == false
+            && request.resource.data.credits == 500)
+        );
+
+      // Admin can change anything (approve accounts, add credits).
+      // A player can only update their own doc, and only if role/approved/
+      // email don't change — this stops a player from self-approving or
+      // self-promoting to admin from devtools. Credits/stats are still
+      // player-writable because the game itself runs entirely client-side
+      // (no backend to referee spins), same trust model as before.
+      allow update: if isAdmin()
+        || (
+          isOwner(uid)
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.approved == resource.data.approved
+          && request.resource.data.email == resource.data.email
+        );
+
+      allow delete: if false;
+    }
+
+    match /settings/{doc} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /redemptions/{code} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'pending'
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0;
+
+      // Only admin can flip status (e.g. mark fulfilled); nothing else
+      // about the redemption can change.
+      allow update: if isAdmin()
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.amount == resource.data.amount
+        && request.resource.data.code == resource.data.code
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if false;
+    }
+  }
+}

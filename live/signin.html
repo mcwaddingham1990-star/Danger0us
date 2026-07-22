@@ -17,9 +17,9 @@
 
     <form id="signinForm" novalidate>
       <div class="field">
-        <label for="email">Email or Username</label>
+        <label for="email">Email</label>
         <div class="input-wrap">
-          <input type="text" id="email" placeholder="Enter your email or username" autocomplete="username">
+          <input type="email" id="email" placeholder="Enter your email" autocomplete="username">
         </div>
         <div class="field-error" id="emailError"></div>
       </div>
@@ -46,12 +46,28 @@
 
 <div id="tickerBar" class="ticker-bar"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/firebase-init.js"></script>
 <script src="js/data.js"></script>
 <script src="auth.js"></script>
 <script src="js/ticker.js"></script>
 <script>
   const form = document.getElementById("signinForm");
   const message = document.getElementById("formMessage");
+
+  function mapAuthError(err) {
+    switch (err.code) {
+      case "auth/invalid-email": return "Enter a valid email address.";
+      case "auth/user-not-found":
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+        return "Incorrect email or password.";
+      case "auth/too-many-requests": return "Too many attempts — try again later.";
+      default: return "Sign in failed. Please try again.";
+    }
+  }
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -62,9 +78,8 @@
     const passwordError = document.getElementById("passwordError");
 
     let valid = true;
-    const existing = drFindPlayer(email);
 
-    if (!existing && !isValidEmail(email)) {
+    if (!isValidEmail(email)) {
       showFieldError(emailError, "Enter a valid email address.");
       valid = false;
     } else {
@@ -83,20 +98,18 @@
       return;
     }
 
-    if (existing && existing.password && existing.password !== password) {
-      showFieldError(passwordError, "Incorrect password.");
-      showMessage(message, "Please fix the errors below.", "error");
-      return;
-    }
+    showMessage(message, "Signing in…", "success");
 
-    let player = existing;
-    if (!player) player = drCreatePlayer(email);
-    drSetSession(player.email);
-
-    showMessage(message, "Signed in. Redirecting…", "success");
-    setTimeout(() => {
-      window.location.href = player.role === "admin" ? "admin.html" : "dashboard.html";
-    }, 600);
+    drSignIn(email, password)
+      .then((player) => {
+        showMessage(message, "Signed in. Redirecting…", "success");
+        setTimeout(() => {
+          window.location.href = player.role === "admin" ? "admin.html" : "dashboard.html";
+        }, 600);
+      })
+      .catch((err) => {
+        showMessage(message, mapAuthError(err), "error");
+      });
   });
 
   startTicker(document.getElementById("tickerBar"));

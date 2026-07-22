@@ -49,19 +49,17 @@
 
 <div id="tickerBar" class="ticker-bar"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/firebase-init.js"></script>
 <script src="js/data.js"></script>
 <script src="js/ticker.js"></script>
 <script>
-  const session = drRequireSessionOrRedirect("signin.html");
-  const me = session ? drCurrentPlayer() : null;
-  if (session && (!me || me.role !== "admin")) {
-    window.location.href = "dashboard.html";
-  }
-
-  function renderPlayers() {
+  async function renderPlayers() {
     const list = document.getElementById("playerList");
-    const players = drGetPlayers().filter((p) => p.role !== "admin");
-    const allRedemptions = drGetRedemptions();
+    const [allPlayers, allRedemptions] = await Promise.all([drGetPlayers(), drGetRedemptions()]);
+    const players = allPlayers.filter((p) => p.role !== "admin");
 
     if (players.length === 0) {
       list.innerHTML = '<div class="player-row">No players yet.</div>';
@@ -70,7 +68,7 @@
 
     list.innerHTML = players.map((p) => {
       const mine = allRedemptions
-        .filter((r) => r.email.toLowerCase() === p.email.toLowerCase())
+        .filter((r) => r.uid === p.id)
         .sort((a, b) => b.createdAt - a.createdAt);
 
       const redeemHtml = mine.length === 0 ? "" : `
@@ -90,7 +88,7 @@
       const approved = !!p.approved;
 
       return `
-        <div class="player-row" data-email="${p.email}">
+        <div class="player-row" data-uid="${p.id}">
           <div class="email">
             ${p.email}
             <span class="approval-badge ${approved ? "approved" : "pending"}">${approved ? "Approved" : "Pending"}</span>
@@ -113,39 +111,42 @@
     }).join("");
 
     list.querySelectorAll(".addCreditsBtn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
+      btn.addEventListener("click", async (e) => {
         const row = e.target.closest(".player-row");
-        const email = row.dataset.email;
+        const uid = row.dataset.uid;
         const input = row.querySelector(".creditInput");
         const amount = parseInt(input.value, 10);
         if (!amount || amount <= 0) return;
-        drAddCredits(email, amount);
+        btn.disabled = true;
+        await drAddCredits(uid, amount);
         input.value = "";
-        renderPlayers();
+        await renderPlayers();
       });
     });
 
     list.querySelectorAll(".fulfillBtn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
+      btn.addEventListener("click", async (e) => {
         const row = e.target.closest(".redeem-row");
-        drSetRedemptionStatus(row.dataset.code, "fulfilled");
-        renderPlayers();
+        btn.disabled = true;
+        await drSetRedemptionStatus(row.dataset.code, "fulfilled");
+        await renderPlayers();
       });
     });
 
     list.querySelectorAll(".approveBtn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
+      btn.addEventListener("click", async (e) => {
         const row = e.target.closest(".player-row");
-        drApprovePlayer(row.dataset.email);
-        renderPlayers();
+        btn.disabled = true;
+        await drApprovePlayer(row.dataset.uid);
+        await renderPlayers();
       });
     });
   }
 
-  function bindSetting(id, valId, suffix, key, isInt) {
+  async function bindSetting(id, valId, suffix, key, isInt) {
     const input = document.getElementById(id);
     const valEl = document.getElementById(valId);
-    const settings = drGetSettings();
+    const settings = await drGetSettings();
     input.value = settings[key];
     valEl.textContent = settings[key] + suffix;
     input.addEventListener("input", () => {
@@ -155,18 +156,26 @@
     });
   }
 
-  if (session) {
-    renderPlayers();
+  (async () => {
+    const session = await drRequireSessionOrRedirect("signin.html");
+    if (!session) return;
+    const me = await drCurrentPlayer();
+    if (!me || me.role !== "admin") {
+      window.location.href = "dashboard.html";
+      return;
+    }
+
+    await renderPlayers();
     bindSetting("winProbability", "valWinProb", "%", "winProbability", true);
     bindSetting("jesterRate", "valJester", "%", "jesterRate", true);
     bindSetting("avgFreeSpins", "valFreeSpins", "", "avgFreeSpins", true);
     bindSetting("multiplierFrequency", "valMultFreq", "%", "multiplierFrequency", true);
     bindSetting("jackpotChance", "valJackpot", "%", "jackpotChance", true);
     bindSetting("clusterMin", "valCluster", "", "clusterMin", true);
-  }
+  })();
 
-  document.getElementById("signOutBtn").addEventListener("click", () => {
-    drClearSession();
+  document.getElementById("signOutBtn").addEventListener("click", async () => {
+    await drClearSession();
     window.location.href = "signin.html";
   });
 

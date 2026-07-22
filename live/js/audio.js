@@ -1,152 +1,252 @@
 /*
-  Lightweight sound system built on the Web Audio API — no external audio
-  files required for the sound effects, everything is synthesized.
+  Sound system built on the Web Audio API — everything here is synthesized
+  in-browser, no external audio files required.
 
-  Background music is a separate story: this file also generates a soft
-  synthesized "eerie pad" ambience as a placeholder loop, because there is
-  no way to synthesize a convincing horror-piano performance from pure
-  oscillators — that needs an actual recorded/composed track. If a real
-  file is dropped at live/audio/bgm.mp3 (or .ogg), it takes over
-  automatically and the synthesized ambience stops.
+  Background music: there is no way to synthesize a real recorded piano
+  performance from oscillators, so this generates a sparse, slow sequence
+  of decaying plucked "piano-like" notes in a minor key over a very quiet
+  sustained drone, run through a procedural reverb for atmosphere — a
+  haunting ambient bed, not a real piano recording. If a real track is
+  placed at live/audio/bgm.mp3 (or .ogg), it automatically takes over and
+  this stops.
 */
 
 const DrAudio = (() => {
   let ctx = null;
   let masterGain = null;
+  let reverb = null;
+  let reverbWet = null;
   let ambienceGain = null;
-  let ambienceNodes = [];
   let ambienceRunning = false;
+  let ambienceTimer = null;
+  let droneOsc = null;
   let muted = false;
   let realMusicEl = null;
+
+  // A minor pentatonic-ish, dark register
+  const NOTE_SCALE = [220, 246.9, 261.6, 293.7, 329.6, 349.2, 392.0];
+
+  function makeImpulse(duration, decay) {
+    const rate = ctx.sampleRate;
+    const length = Math.floor(rate * duration);
+    const impulse = ctx.createBuffer(2, length, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = impulse.getChannelData(ch);
+      for (let i = 0; i < length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+      }
+    }
+    return impulse;
+  }
 
   function ensureCtx() {
     if (!ctx) {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
+
       masterGain = ctx.createGain();
-      masterGain.gain.value = muted ? 0 : 0.8;
+      masterGain.gain.value = muted ? 0 : 0.9;
       masterGain.connect(ctx.destination);
+
+      reverb = ctx.createConvolver();
+      reverb.buffer = makeImpulse(2.6, 2.5);
+      reverbWet = ctx.createGain();
+      reverbWet.gain.value = 0.35;
+      reverb.connect(reverbWet).connect(masterGain);
     }
     if (ctx.state === "suspended") ctx.resume();
     return ctx;
   }
 
-  function envGain(duration, peak) {
+  // Sends a signal to both the dry master bus and the reverb bus.
+  function connectWithReverb(node, dryLevel) {
+    const dry = ctx.createGain();
+    dry.gain.value = dryLevel != null ? dryLevel : 1;
+    node.connect(dry).connect(masterGain);
+    node.connect(reverb);
+  }
+
+  function envGain(duration, peak, attack) {
     const g = ctx.createGain();
     const now = ctx.currentTime;
-    g.gain.setValueAtTime(0, now);
-    g.gain.linearRampToValueAtTime(peak, now + Math.min(0.03, duration * 0.2));
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.001, peak), now + (attack || 0.02));
     g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     return g;
   }
 
-  function tone(freq, duration, type, peak) {
+  function noiseBuffer(duration) {
+    const bufferSize = Math.floor(ctx.sampleRate * duration);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  }
+
+  function noiseBurst(duration, filterFreq, peak, filterType) {
+    ensureCtx();
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer(duration);
+    const filter = ctx.createBiquadFilter();
+    filter.type = filterType || "lowpass";
+    filter.frequency.value = filterFreq || 800;
+    const g = envGain(duration, peak || 0.35, 0.01);
+    src.connect(filter).connect(g);
+    connectWithReverb(g, 0.9);
+    src.start();
+  }
+
+  function tone(freq, duration, type, peak, attack) {
     ensureCtx();
     const osc = ctx.createOscillator();
     osc.type = type || "sine";
     osc.frequency.value = freq;
-    const g = envGain(duration, peak || 0.3);
-    osc.connect(g).connect(masterGain);
+    const g = envGain(duration, peak || 0.3, attack);
+    osc.connect(g);
+    connectWithReverb(g, 0.85);
     osc.start();
     osc.stop(ctx.currentTime + duration + 0.05);
   }
 
-  function noiseBurst(duration, filterFreq, peak) {
+  // A single plucked, piano-like note: fundamental + a couple of quiet
+  // harmonics through a filter that darkens as the note decays.
+  function pianoNote(freq, peak, duration) {
     ensureCtx();
-    const bufferSize = ctx.sampleRate * duration;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const now = ctx.currentTime;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(peak, now + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = filterFreq || 800;
-    const g = envGain(duration, peak || 0.35);
-    src.connect(filter).connect(g).connect(masterGain);
-    src.start();
+    filter.frequency.setValueAtTime(3200, now);
+    filter.frequency.exponentialRampToValueAtTime(400, now + duration);
+    filter.Q.value = 0.4;
+
+    g.connect(filter);
+    connectWithReverb(filter, 0.7);
+
+    [1, 2, 3.01].forEach((mult, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = i === 0 ? "triangle" : "sine";
+      osc.frequency.value = freq * mult;
+      const partialGain = ctx.createGain();
+      partialGain.gain.value = i === 0 ? 1 : 0.16 / i;
+      osc.connect(partialGain).connect(g);
+      osc.start(now);
+      osc.stop(now + duration + 0.1);
+    });
   }
 
   function spinStart() {
     ensureCtx();
+    const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     osc.type = "sawtooth";
-    const now = ctx.currentTime;
-    osc.frequency.setValueAtTime(140, now);
-    osc.frequency.exponentialRampToValueAtTime(420, now + 0.35);
+    osc.frequency.setValueAtTime(120, now);
+    osc.frequency.exponentialRampToValueAtTime(480, now + 0.4);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(300, now);
+    filter.frequency.exponentialRampToValueAtTime(2200, now + 0.4);
+
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, now);
-    g.gain.linearRampToValueAtTime(0.18, now + 0.05);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
-    osc.connect(g).connect(masterGain);
-    osc.start();
-    osc.stop(now + 0.45);
+    g.gain.exponentialRampToValueAtTime(0.22, now + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+
+    osc.connect(filter).connect(g);
+    connectWithReverb(g, 0.8);
+    osc.start(now);
+    osc.stop(now + 0.5);
+
+    noiseBurst(0.3, 1800, 0.08, "highpass");
   }
 
   function reelStop() {
-    tone(220, 0.09, "square", 0.15);
+    const freq = 180 + Math.random() * 60;
+    tone(freq, 0.1, "square", 0.12, 0.002);
+    noiseBurst(0.06, 2500, 0.08, "highpass");
   }
 
   function winChime(tierIndex) {
-    ensureCtx();
-    const base = 440 + (tierIndex || 0) * 120;
-    [0, 4, 7].forEach((semi, i) => {
-      setTimeout(() => tone(base * Math.pow(2, semi / 12), 0.5, "sine", 0.18), i * 60);
+    const base = 523.3 * Math.pow(2, (tierIndex || 0) * 0.16); // C5 climbing by tier
+    [0, 4, 7, 12].forEach((semi, i) => {
+      setTimeout(() => pianoNote(base * Math.pow(2, semi / 12), 0.22, 1.1), i * 70);
     });
   }
 
   function explosion() {
-    noiseBurst(0.35, 500, 0.3);
+    ensureCtx();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.exponentialRampToValueAtTime(35, now + 0.35);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.4, now + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+    osc.connect(g);
+    connectWithReverb(g, 0.9);
+    osc.start(now);
+    osc.stop(now + 0.45);
+
+    noiseBurst(0.4, 600, 0.32, "lowpass");
   }
 
   function bonusTrigger() {
     ensureCtx();
-    [0, 3, 6, 10].forEach((semi, i) => {
-      setTimeout(() => tone(180 * Math.pow(2, semi / 12), 0.6, "sawtooth", 0.15), i * 130);
+    [0, 3, 6, 10, 12].forEach((semi, i) => {
+      setTimeout(() => {
+        tone(146.8 * Math.pow(2, semi / 12), 0.9, "sawtooth", 0.14, 0.05);
+      }, i * 150);
     });
+    setTimeout(() => noiseBurst(1.2, 1200, 0.15, "bandpass"), 300);
   }
 
   function jackpot() {
     ensureCtx();
-    [0, 4, 7, 12, 16].forEach((semi, i) => {
-      setTimeout(() => tone(300 * Math.pow(2, semi / 12), 0.7, "triangle", 0.22), i * 110);
+    [0, 4, 7, 12, 16, 19, 24].forEach((semi, i) => {
+      setTimeout(() => pianoNote(261.6 * Math.pow(2, semi / 12), 0.26, 1.3), i * 100);
     });
+  }
+
+  function scheduleAmbience() {
+    if (!ambienceRunning) return;
+    const freq = NOTE_SCALE[Math.floor(Math.random() * NOTE_SCALE.length)] / 2;
+    pianoNote(freq, 0.055, 3.5 + Math.random() * 1.5);
+    const nextIn = 2800 + Math.random() * 3200;
+    ambienceTimer = setTimeout(scheduleAmbience, nextIn);
   }
 
   function startAmbience() {
     if (ambienceRunning || realMusicEl) return;
     ensureCtx();
     ambienceRunning = true;
+
     ambienceGain = ctx.createGain();
-    ambienceGain.gain.value = muted ? 0 : 0.12;
+    ambienceGain.gain.value = 0;
     ambienceGain.connect(masterGain);
+    ambienceGain.gain.linearRampToValueAtTime(muted ? 0 : 0.5, ctx.currentTime + 2);
 
-    // Slow, detuned minor-key drone with a soft tremolo — a placeholder
-    // "eerie pad" until a real piano track is supplied.
-    const notes = [110, 130.8, 164.8]; // A2, C3, E3 minor triad
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      osc.detune.value = (i - 1) * 6;
+    droneOsc = ctx.createOscillator();
+    droneOsc.type = "sine";
+    droneOsc.frequency.value = 55; // low A
+    const droneGain = ctx.createGain();
+    droneGain.gain.value = 0.05;
+    droneOsc.connect(droneGain).connect(ambienceGain);
+    droneOsc.start();
 
-      const lfo = ctx.createOscillator();
-      lfo.frequency.value = 0.12 + i * 0.03;
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 0.05;
-      lfo.connect(lfoGain).connect(ambienceGain.gain);
-      lfo.start();
-
-      osc.connect(ambienceGain);
-      osc.start();
-      ambienceNodes.push(osc, lfo);
-    });
+    scheduleAmbience();
   }
 
   function stopAmbience() {
-    ambienceNodes.forEach((n) => { try { n.stop(); } catch (e) {} });
-    ambienceNodes = [];
     ambienceRunning = false;
+    if (ambienceTimer) clearTimeout(ambienceTimer);
+    if (droneOsc) { try { droneOsc.stop(); } catch (e) {} }
+    droneOsc = null;
   }
 
   function tryLoadRealMusic() {
@@ -160,20 +260,19 @@ const DrAudio = (() => {
       el.play().catch(() => {});
     }, { once: true });
     el.addEventListener("error", () => {
-      // no real track present — fall back to synthesized ambience
       startAmbience();
     }, { once: true });
   }
 
   function start() {
     ensureCtx();
-    tryLoadRealMusic();
+    if (!realMusicEl && !ambienceRunning) tryLoadRealMusic();
   }
 
   function setMuted(next) {
     muted = next;
-    if (masterGain) masterGain.gain.value = muted ? 0 : 0.8;
-    if (ambienceGain) ambienceGain.gain.value = muted ? 0 : 0.12;
+    if (masterGain) masterGain.gain.value = muted ? 0 : 0.9;
+    if (ambienceGain) ambienceGain.gain.value = muted ? 0 : 0.5;
     if (realMusicEl) realMusicEl.volume = muted ? 0 : 0.35;
   }
 

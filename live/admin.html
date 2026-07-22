@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dangerous Rides — Admin</title>
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/ticker.css">
+</head>
+<body>
+<div class="scroll-page" style="background-image: url('images/dash.screens/dashboard-scroll.jpg');">
+  <div class="scroll-panel" style="max-height: 78vh;">
+    <h1>ADMIN CONSOLE</h1>
+
+    <div class="section-label">Players (scroll to see more)</div>
+    <div id="playerList"></div>
+
+    <div class="section-label">Game Settings</div>
+
+    <div class="setting-row">
+      <label>Win Probability <span class="val" id="valWinProb">35%</span></label>
+      <input type="range" id="winProbability" min="0" max="100" value="35">
+    </div>
+    <div class="setting-row">
+      <label>Jester Appearance Rate <span class="val" id="valJester">8%</span></label>
+      <input type="range" id="jesterRate" min="0" max="100" value="8">
+    </div>
+    <div class="setting-row">
+      <label>Average Free Spins Awarded <span class="val" id="valFreeSpins">15</span></label>
+      <input type="range" id="avgFreeSpins" min="3" max="50" value="15">
+    </div>
+    <div class="setting-row">
+      <label>Multiplier Frequency <span class="val" id="valMultFreq">50%</span></label>
+      <input type="range" id="multiplierFrequency" min="0" max="100" value="50">
+    </div>
+    <div class="setting-row">
+      <label>Mega Jackpot Chance <span class="val" id="valJackpot">1%</span></label>
+      <input type="range" id="jackpotChance" min="0" max="100" value="1">
+    </div>
+    <div class="setting-row">
+      <label>Cluster Size Requirement <span class="val" id="valCluster">5</span></label>
+      <input type="range" id="clusterMin" min="3" max="10" value="5">
+    </div>
+
+    <button class="btn-secondary" id="signOutBtn" style="margin-top: 10px;">Sign Out</button>
+  </div>
+</div>
+
+<div id="tickerBar" class="ticker-bar"></div>
+
+<script src="js/data.js"></script>
+<script src="js/ticker.js"></script>
+<script>
+  const session = drRequireSessionOrRedirect("signin.html");
+  const me = session ? drCurrentPlayer() : null;
+  if (session && (!me || me.role !== "admin")) {
+    window.location.href = "dashboard.html";
+  }
+
+  function renderPlayers() {
+    const list = document.getElementById("playerList");
+    const players = drGetPlayers().filter((p) => p.role !== "admin");
+    if (players.length === 0) {
+      list.innerHTML = '<div class="player-row">No players yet.</div>';
+      return;
+    }
+    list.innerHTML = players.map((p) => `
+      <div class="player-row" data-email="${p.email}">
+        <div class="email">${p.email}</div>
+        <div class="mini-stats">
+          <div>Time: <b>${p.timePlayingMinutes || 0}m</b></div>
+          <div>Credits: <b>${(p.credits || 0).toLocaleString()}</b></div>
+          <div>Played: <b>${(p.creditsPlayed || 0).toLocaleString()}</b></div>
+          <div>Won: <b>${(p.creditsWon || 0).toLocaleString()}</b></div>
+          <div>Lost: <b>${(p.creditsLost || 0).toLocaleString()}</b></div>
+        </div>
+        <div class="add-credits-row">
+          <input type="number" placeholder="Amount" class="creditInput" min="1">
+          <button class="addCreditsBtn">Add Credits</button>
+        </div>
+      </div>
+    `).join("");
+
+    list.querySelectorAll(".addCreditsBtn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const row = e.target.closest(".player-row");
+        const email = row.dataset.email;
+        const input = row.querySelector(".creditInput");
+        const amount = parseInt(input.value, 10);
+        if (!amount || amount <= 0) return;
+        drAddCredits(email, amount);
+        input.value = "";
+        renderPlayers();
+      });
+    });
+  }
+
+  function bindSetting(id, valId, suffix, key, isInt) {
+    const input = document.getElementById(id);
+    const valEl = document.getElementById(valId);
+    const settings = drGetSettings();
+    input.value = settings[key];
+    valEl.textContent = settings[key] + suffix;
+    input.addEventListener("input", () => {
+      const v = isInt ? parseInt(input.value, 10) : Number(input.value);
+      valEl.textContent = v + suffix;
+      drSaveSettings({ [key]: v });
+    });
+  }
+
+  if (session) {
+    renderPlayers();
+    bindSetting("winProbability", "valWinProb", "%", "winProbability", true);
+    bindSetting("jesterRate", "valJester", "%", "jesterRate", true);
+    bindSetting("avgFreeSpins", "valFreeSpins", "", "avgFreeSpins", true);
+    bindSetting("multiplierFrequency", "valMultFreq", "%", "multiplierFrequency", true);
+    bindSetting("jackpotChance", "valJackpot", "%", "jackpotChance", true);
+    bindSetting("clusterMin", "valCluster", "", "clusterMin", true);
+  }
+
+  document.getElementById("signOutBtn").addEventListener("click", () => {
+    drClearSession();
+    window.location.href = "signin.html";
+  });
+
+  startTicker(document.getElementById("tickerBar"));
+</script>
+</body>
+</html>

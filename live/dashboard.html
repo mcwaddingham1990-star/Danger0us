@@ -40,6 +40,25 @@
       <div id="depositList"></div>
     </div>
 
+    <div class="deposit-history" id="redeemBox">
+      <div class="label">Redeem Credits</div>
+      <div class="redeem-form">
+        <input type="number" id="redeemAmount" placeholder="Amount to redeem" min="1">
+        <button class="btn-primary" id="redeemBtn" style="margin: 0;">REDEEM</button>
+      </div>
+      <div class="form-message" id="redeemMessage"></div>
+      <div id="redeemCodeBox" class="redeem-code-box" style="display:none;">
+        <div class="label">Your Redemption Code</div>
+        <div class="redeem-code" id="redeemCodeText"></div>
+        <p class="redeem-note">Save this code — you'll be emailed with your choice of offers once it's confirmed.</p>
+      </div>
+    </div>
+
+    <div class="deposit-history">
+      <div class="label">Your Redemption History</div>
+      <div id="redemptionHistoryList"></div>
+    </div>
+
     <button class="btn-primary" id="goToGamesBtn">GO TO GAMES</button>
     <button class="btn-secondary" id="signOutBtn">Sign Out</button>
   </div>
@@ -88,8 +107,61 @@
             return `<div class="deposit-row"><span>${d.note || "Deposit"} — ${date}</span><span class="amt">+${d.amount}</span></div>`;
           }).join("");
         }
+
+        renderRedemptionHistory(player.email);
       }
     }
+  }
+
+  function renderRedemptionHistory(email) {
+    const box = document.getElementById("redemptionHistoryList");
+    const mine = drGetRedemptions().filter((r) => r.email.toLowerCase() === email.toLowerCase());
+    if (mine.length === 0) {
+      box.innerHTML = '<div class="deposit-row"><span>No redemptions yet</span></div>';
+      return;
+    }
+    box.innerHTML = mine.slice().reverse().map((r) => {
+      const date = new Date(r.createdAt).toLocaleDateString();
+      const statusLabel = r.status === "fulfilled" ? "Fulfilled" : "Pending";
+      return `<div class="deposit-row"><span>${r.code} — ${date} (${statusLabel})</span><span class="amt">${r.amount}</span></div>`;
+    }).join("");
+  }
+
+  document.getElementById("redeemBtn").addEventListener("click", () => {
+    const player = drCurrentPlayer();
+    if (!player) return;
+    const input = document.getElementById("redeemAmount");
+    const msg = document.getElementById("redeemMessage");
+    const amount = parseInt(input.value, 10);
+
+    if (!amount || amount <= 0) {
+      showMessage(msg, "Enter a valid amount.", "error");
+      return;
+    }
+    if (amount > player.credits) {
+      showMessage(msg, "You don't have that many credits.", "error");
+      return;
+    }
+
+    const redemption = drCreateRedemption(player.email, amount);
+    if (!redemption) {
+      showMessage(msg, "Redemption failed — try again.", "error");
+      return;
+    }
+
+    input.value = "";
+    showMessage(msg, "Redemption submitted!", "success");
+    document.getElementById("redeemCodeBox").style.display = "block";
+    document.getElementById("redeemCodeText").textContent = redemption.code;
+
+    const updated = drFindPlayer(player.email);
+    document.getElementById("statCredits").textContent = Math.round(updated.credits).toLocaleString();
+    renderRedemptionHistory(player.email);
+  });
+
+  function showMessage(el, text, kind) {
+    el.textContent = text;
+    el.className = "form-message show " + kind;
   }
 
   document.getElementById("signOutBtn").addEventListener("click", () => {

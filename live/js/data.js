@@ -10,6 +10,7 @@ const DR_KEYS = {
   session: "dr_session",
   players: "dr_players",
   settings: "dr_settings",
+  redemptions: "dr_redemptions",
 };
 
 const DEFAULT_SETTINGS = {
@@ -161,6 +162,55 @@ function drAddCredits(email, amount) {
   player.depositHistory = player.depositHistory || [];
   player.depositHistory.push({ amount, at: Date.now(), note: "Admin credit add" });
   drUpsertPlayer(player);
+}
+
+function drGetRedemptions() {
+  return drLoad(DR_KEYS.redemptions, []);
+}
+
+function drSaveRedemptions(list) {
+  drSave(DR_KEYS.redemptions, list);
+}
+
+function drGenerateRedeemCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid confusion
+  const existing = new Set(drGetRedemptions().map((r) => r.code));
+  let code;
+  do {
+    let rand = "";
+    for (let i = 0; i < 8; i++) rand += chars[Math.floor(Math.random() * chars.length)];
+    code = "DR-" + rand;
+  } while (existing.has(code));
+  return code;
+}
+
+function drCreateRedemption(email, amount) {
+  const player = drFindPlayer(email);
+  if (!player || amount <= 0 || player.credits < amount) return null;
+
+  player.credits -= amount;
+  drUpsertPlayer(player);
+
+  const redemption = {
+    code: drGenerateRedeemCode(),
+    email,
+    amount,
+    status: "pending",
+    createdAt: Date.now(),
+  };
+  const list = drGetRedemptions();
+  list.push(redemption);
+  drSaveRedemptions(list);
+  return redemption;
+}
+
+function drSetRedemptionStatus(code, status) {
+  const list = drGetRedemptions();
+  const idx = list.findIndex((r) => r.code === code);
+  if (idx >= 0) {
+    list[idx].status = status;
+    drSaveRedemptions(list);
+  }
 }
 
 drEnsureSeeded();

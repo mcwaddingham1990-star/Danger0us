@@ -92,6 +92,74 @@ html, body {
   border-bottom: 1px solid rgba(120, 170, 230, 0.12);
 }
 
+.redeem-form {
+  display: flex;
+  gap: 8px;
+}
+
+.redeem-form input {
+  flex: 1;
+  background: rgba(0, 6, 18, 0.65);
+  border: 1px solid rgba(120, 170, 230, 0.35);
+  border-radius: 8px;
+  color: #f0f5ff;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+.redeem-form .btn-primary {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 10px 16px;
+}
+
+.redeem-code-box {
+  margin-top: 12px;
+  text-align: center;
+  padding: 12px;
+  background: rgba(20, 84, 201, 0.15);
+  border: 1px solid rgba(79, 163, 255, 0.5);
+  border-radius: 10px;
+}
+
+.redeem-code {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #4fa3ff;
+  text-shadow: 0 0 10px rgba(79, 163, 255, 0.6);
+  margin: 4px 0;
+}
+
+.redeem-note {
+  font-size: 0.72rem;
+  color: #9db6d8;
+  margin: 4px 0 0;
+}
+
+.form-message {
+  font-size: 0.8rem;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  display: none;
+}
+
+.form-message.show { display: block; }
+
+.form-message.success {
+  background: rgba(46, 160, 90, 0.18);
+  border: 1px solid rgba(46, 160, 90, 0.5);
+  color: #a9f0c0;
+}
+
+.form-message.error {
+  background: rgba(200, 40, 40, 0.18);
+  border: 1px solid rgba(200, 40, 40, 0.5);
+  color: #ffb3b3;
+}
+
 .deposit-row:last-child { border-bottom: none; }
 .deposit-row .amt { color: #4fa3ff; font-weight: 600; }
 

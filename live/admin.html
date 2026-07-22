@@ -61,26 +61,50 @@
   function renderPlayers() {
     const list = document.getElementById("playerList");
     const players = drGetPlayers().filter((p) => p.role !== "admin");
+    const allRedemptions = drGetRedemptions();
+
     if (players.length === 0) {
       list.innerHTML = '<div class="player-row">No players yet.</div>';
       return;
     }
-    list.innerHTML = players.map((p) => `
-      <div class="player-row" data-email="${p.email}">
-        <div class="email">${p.email}</div>
-        <div class="mini-stats">
-          <div>Time: <b>${p.timePlayingMinutes || 0}m</b></div>
-          <div>Credits: <b>${(p.credits || 0).toLocaleString()}</b></div>
-          <div>Played: <b>${(p.creditsPlayed || 0).toLocaleString()}</b></div>
-          <div>Won: <b>${(p.creditsWon || 0).toLocaleString()}</b></div>
-          <div>Lost: <b>${(p.creditsLost || 0).toLocaleString()}</b></div>
+
+    list.innerHTML = players.map((p) => {
+      const mine = allRedemptions
+        .filter((r) => r.email.toLowerCase() === p.email.toLowerCase())
+        .sort((a, b) => b.createdAt - a.createdAt);
+
+      const redeemHtml = mine.length === 0 ? "" : `
+        <div class="redeem-list">
+          <div class="redeem-list-label">Redemption Codes</div>
+          ${mine.map((r) => `
+            <div class="redeem-row" data-code="${r.code}">
+              <span class="redeem-code-sm">${r.code}</span>
+              <span class="redeem-amt-sm">${r.amount.toLocaleString()} cr</span>
+              <span class="redeem-status ${r.status}">${r.status}</span>
+              ${r.status === "pending" ? '<button class="fulfillBtn">Mark Fulfilled</button>' : ""}
+            </div>
+          `).join("")}
         </div>
-        <div class="add-credits-row">
-          <input type="number" placeholder="Amount" class="creditInput" min="1">
-          <button class="addCreditsBtn">Add Credits</button>
+      `;
+
+      return `
+        <div class="player-row" data-email="${p.email}">
+          <div class="email">${p.email}</div>
+          <div class="mini-stats">
+            <div>Time: <b>${p.timePlayingMinutes || 0}m</b></div>
+            <div>Credits: <b>${(p.credits || 0).toLocaleString()}</b></div>
+            <div>Played: <b>${(p.creditsPlayed || 0).toLocaleString()}</b></div>
+            <div>Won: <b>${(p.creditsWon || 0).toLocaleString()}</b></div>
+            <div>Lost: <b>${(p.creditsLost || 0).toLocaleString()}</b></div>
+          </div>
+          <div class="add-credits-row">
+            <input type="number" placeholder="Amount" class="creditInput" min="1">
+            <button class="addCreditsBtn">Add Credits</button>
+          </div>
+          ${redeemHtml}
         </div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
 
     list.querySelectorAll(".addCreditsBtn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
@@ -91,6 +115,14 @@
         if (!amount || amount <= 0) return;
         drAddCredits(email, amount);
         input.value = "";
+        renderPlayers();
+      });
+    });
+
+    list.querySelectorAll(".fulfillBtn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const row = e.target.closest(".redeem-row");
+        drSetRedemptionStatus(row.dataset.code, "fulfilled");
         renderPlayers();
       });
     });

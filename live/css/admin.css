@@ -53,6 +53,67 @@
   white-space: nowrap;
 }
 
+.redeem-list {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(120, 170, 230, 0.2);
+}
+
+.redeem-list-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9db6d8;
+  margin-bottom: 6px;
+}
+
+.redeem-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  padding: 5px 0;
+}
+
+.redeem-code-sm {
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #4fa3ff;
+}
+
+.redeem-amt-sm {
+  color: #f0f5ff;
+}
+
+.redeem-status {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.redeem-status.pending {
+  background: rgba(230, 170, 40, 0.2);
+  color: #ffcf6b;
+}
+
+.redeem-status.fulfilled {
+  background: rgba(46, 160, 90, 0.2);
+  color: #a9f0c0;
+}
+
+.redeem-row .fulfillBtn {
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid rgba(120, 170, 230, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: #cfe4ff;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
 .section-label {
   font-size: 0.75rem;
   text-transform: uppercase;

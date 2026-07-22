@@ -193,12 +193,14 @@ function resolveSpin(cols, rows, settings, options) {
     highestMultiplierUsed = Math.max(highestMultiplierUsed, activeMultiplier);
 
     const removedCells = new Set();
+    let stepMultiplierUnits = 0;
     for (const cluster of clusters) {
       biggestCluster = Math.max(biggestCluster, cluster.cells.length);
       const payMult = payoutMultiplierForCluster(cluster.tier, cluster.cells.length);
-      totalMultiplierUnits += payMult * jesterMult * activeMultiplier;
+      stepMultiplierUnits += payMult * jesterMult * activeMultiplier;
       cluster.cells.forEach(([r, c]) => removedCells.add(r + "," + c));
     }
+    totalMultiplierUnits += stepMultiplierUnits;
 
     removedCells.forEach((key) => {
       const [r, c] = key.split(",").map(Number);
@@ -212,6 +214,7 @@ function resolveSpin(cols, rows, settings, options) {
       grid: grid.map((row) => row.slice()),
       clusters,
       removedCells: Array.from(removedCells),
+      stepMultiplierUnits,
     });
 
     if (cascadeCount > 15) break; // safety valve — stop runaway snowballing in one spin

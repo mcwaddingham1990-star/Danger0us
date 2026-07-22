@@ -17,8 +17,17 @@ if (player) {
   const hudWin = document.getElementById("hudWin");
   const creditsTop = document.getElementById("creditsTop");
   const multiplierBtnVal = document.getElementById("multiplierVal");
+  const winFlashLayer = document.getElementById("winFlashLayer");
 
   function sleep(ms) { return new Promise((res) => setTimeout(res, ms)); }
+
+  function showWinFlash(text, kind) {
+    const el = document.createElement("div");
+    el.className = "win-flash-text " + (kind || "cascade");
+    el.textContent = text;
+    el.addEventListener("animationend", () => el.remove());
+    winFlashLayer.appendChild(el);
+  }
 
   function refreshHud() {
     hudBet.textContent = betLevels[betIndex];
@@ -134,13 +143,15 @@ if (player) {
     });
   }
 
-  async function playCascadeFrom(container, c, r, result) {
+  async function playCascadeFrom(container, c, r, result, bet) {
     for (let i = 1; i < result.steps.length; i++) {
       const step = result.steps[i];
       const cells = step.removedCells.map((k) => k.split(",").map(Number));
       highlightCells(container, cells);
       DrAudio.explosion();
       DrAudio.winChime(Math.min(3, i - 1));
+      const stepWin = Math.round((step.stepMultiplierUnits || 0) * bet);
+      if (stepWin > 0) showWinFlash("+" + stepWin.toLocaleString() + " CREDITS", "cascade");
       await sleep(480);
       renderGrid(container, step.grid, c, r, true);
       await sleep(300);
@@ -162,7 +173,8 @@ if (player) {
       drUpsertPlayer(player);
       refreshHud();
       DrAudio.jackpot();
-      alert("MEGA JACKPOT! +2500 credits");
+      showWinFlash("MEGA JACKPOT! +2500", "jackpot");
+      await sleep(1700);
       return true;
     }
     return false;
@@ -199,17 +211,27 @@ if (player) {
 
       await spinReveal(bonusReelWindow, BONUS_COLS, BONUS_ROWS, result.steps[0].grid);
       await sleep(200);
-      await playCascadeFrom(bonusReelWindow, BONUS_COLS, BONUS_ROWS, result);
+      await playCascadeFrom(bonusReelWindow, BONUS_COLS, BONUS_ROWS, result, lockedBet);
 
       const spinWin = Math.round(result.totalMultiplierUnits * lockedBet);
       bonusWinTotal += spinWin;
       runningCascadeCount = result.endingCascadeCount;
-      highestMult = Math.max(highestMult, result.highestMultiplierUsed);
+      if (result.highestMultiplierUsed > highestMult) {
+        highestMult = result.highestMultiplierUsed;
+        showWinFlash(highestMult + "X MULTIPLIER!", "bonus");
+        DrAudio.winChime(3);
+      }
       biggestCascadeOverall = Math.max(biggestCascadeOverall, result.biggestCluster);
 
+      const wasJackpot = jackpotHit;
       if (result.initialJesterCount >= 40) jackpotHit = true;
       if (runningCascadeCount >= 100) jackpotHit = true;
       if (Math.random() * 100 < (settings.jackpotChance || 0)) jackpotHit = true;
+      if (jackpotHit && !wasJackpot) {
+        DrAudio.jackpot();
+        showWinFlash("JACKPOT +2500!", "jackpot");
+        await sleep(1700);
+      }
 
       document.getElementById("bonusMultiplier").textContent = highestMult + "x";
       document.getElementById("bonusWinTotal").textContent = Math.round(bonusWinTotal).toLocaleString();
@@ -256,7 +278,7 @@ if (player) {
 
     await spinReveal(reelWindow, c, r, result.steps[0].grid);
     await sleep(200);
-    await playCascadeFrom(reelWindow, c, r, result);
+    await playCascadeFrom(reelWindow, c, r, result, bet);
 
     const winAmount = Math.round(result.totalMultiplierUnits * bet);
     settleStats(bet, winAmount);

@@ -1,30 +1,38 @@
 /*
   Active symbol set for Blue Diamonds.
-  Curated subset of the uploaded art — kept around 8 total symbols so
-  clusters on a 100-cell grid form at a reasonable rate (roughly one
-  symbol type per 10-12 cells). More assets live in live/images/symbols/
-  by tier if you want to expand this list later.
+  Generic letters are the common, low-value filler (most of the board).
+  Your uploaded photo symbols are rarer the further up the tier they go,
+  and pay out more to match — joker is rarest/highest of all.
 */
 
+const GRID_COLS = 8;
+const GRID_ROWS = 8;
+
 const SYMBOL_SET = [
-  { id: "moto-normal", tier: "normal", weight: 10, img: "images/symbols/normal/motorcycle-rear.jpg" },
-  { id: "watch-normal", tier: "normal", weight: 10, img: "images/symbols/normal/watch-gold-black.jpg" },
-  { id: "cash-normal", tier: "normal", weight: 10, img: "images/symbols/normal/cash-stack.jpg" },
+  { id: "letter-a", tier: "generic", weight: 22, img: "images/symbols/generic/letter-a.svg" },
+  { id: "letter-k", tier: "generic", weight: 22, img: "images/symbols/generic/letter-k.svg" },
+  { id: "letter-q", tier: "generic", weight: 22, img: "images/symbols/generic/letter-q.svg" },
+  { id: "letter-j", tier: "generic", weight: 22, img: "images/symbols/generic/letter-j.svg" },
 
-  { id: "moto-blue", tier: "blue", weight: 6, img: "images/symbols/blue/motorcycle-glow.jpg" },
-  { id: "lady-car-blue", tier: "blue", weight: 6, img: "images/symbols/blue/lady-car.jpg" },
-  { id: "lady-champagne-blue", tier: "blue", weight: 6, img: "images/symbols/blue/lady-champagne.jpg" },
+  { id: "moto-normal", tier: "normal", weight: 5, img: "images/symbols/normal/motorcycle-rear.jpg" },
+  { id: "watch-normal", tier: "normal", weight: 5, img: "images/symbols/normal/watch-gold-black.jpg" },
+  { id: "cash-normal", tier: "normal", weight: 5, img: "images/symbols/normal/cash-stack.jpg" },
 
-  { id: "lady-red", tier: "red", weight: 3, img: "images/symbols/red/lady-red.jpg" },
+  { id: "moto-blue", tier: "blue", weight: 2.5, img: "images/symbols/blue/motorcycle-glow.jpg" },
+  { id: "lady-car-blue", tier: "blue", weight: 2.5, img: "images/symbols/blue/lady-car.jpg" },
+  { id: "lady-champagne-blue", tier: "blue", weight: 2.5, img: "images/symbols/blue/lady-champagne.jpg" },
+
+  { id: "lady-red", tier: "red", weight: 1, img: "images/symbols/red/lady-red.jpg" },
 
   { id: "jester", tier: "joker", weight: 0, img: "images/symbols/joker/joker-777.jpg", isWild: true },
 ];
 
 const TIER_PAYTABLE = {
-  normal: { small: 0.1, medium: 2, large: 20 },
-  blue: { small: 0.5, medium: 5, large: 100 },
-  red: { small: 2, medium: 25, large: 500 },
-  joker: { small: 2, medium: 25, large: 500 },
+  generic: { small: 0.05, medium: 1, large: 8 },
+  normal: { small: 0.3, medium: 8, large: 60 },
+  blue: { small: 1, medium: 15, large: 150 },
+  red: { small: 3, medium: 40, large: 600 },
+  joker: { small: 5, medium: 50, large: 750 },
 };
 
 function payoutMultiplierForCluster(tier, clusterSize) {

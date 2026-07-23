@@ -25,6 +25,13 @@
       <div class="spin-card red c4">♥</div>
     </div>
 
+    <div class="card-orbit">
+      <div class="orbit-arm arm1"><div class="orbit-card"><div class="trail"></div><span class="face">♦</span></div></div>
+      <div class="orbit-arm arm2"><div class="orbit-card"><div class="trail"></div><span class="face">♠</span></div></div>
+      <div class="orbit-arm arm3"><div class="orbit-card"><div class="trail"></div><span class="face">♣</span></div></div>
+      <div class="orbit-arm arm4"><div class="orbit-card"><div class="trail"></div><span class="face">♥</span></div></div>
+    </div>
+
     <div class="reel-window" id="reelWindow"></div>
 
     <div class="win-flash-layer" id="winFlashLayer"></div>
@@ -86,14 +93,18 @@
 
 <div class="control-bar">
   <button class="ctrl-btn" id="btnMinBetFloat">
-    <span class="ctrl-label">Min Bet</span>
+    <span class="ctrl-label">Min</span>
   </button>
-  <button class="ctrl-btn" id="btnMultiplierFloat">
-    <span class="ctrl-label">Multiplier</span>
-    <span class="ctrl-sub" id="multiplierVal">x5</span>
-  </button>
+  <div class="ctrl-btn bet-stepper">
+    <button type="button" class="stepper-btn" id="btnBetDownFloat" aria-label="Lower bet">&minus;</button>
+    <div class="stepper-val">
+      <span class="ctrl-label">Bet</span>
+      <span class="ctrl-sub" id="betVal">1.0</span>
+    </div>
+    <button type="button" class="stepper-btn" id="btnBetUpFloat" aria-label="Raise bet">+</button>
+  </div>
   <button class="ctrl-btn" id="btnMaxBetFloat">
-    <span class="ctrl-label">Max Bet</span>
+    <span class="ctrl-label">Max</span>
   </button>
   <button class="ctrl-btn spin" id="btnSpinFloat">
     <span class="ctrl-label">Spin</span>

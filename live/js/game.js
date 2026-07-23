@@ -8,16 +8,21 @@ if (player) {
   const BONUS_COLS = 8;
   const BONUS_ROWS = 10;
 
-  const betLevels = [1, 2, 5, 10, 25, 50, 100];
-  let betIndex = 2;
+  const MIN_BET = 0.1;
+  const MAX_BET = 100;
+  const BET_STEP = 0.1;
+  let bet = 1;
   let isSpinning = false;
+
+  function roundBet(v) { return Math.round(v * 10) / 10; }
+  function formatCredits(v) { return (Math.round(v * 10) / 10).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
 
   const reelWindow = document.getElementById("reelWindow");
   const hudBet = document.getElementById("hudBet");
   const hudCredits = document.getElementById("hudCredits");
   const hudWin = document.getElementById("hudWin");
   const creditsTop = document.getElementById("creditsTop");
-  const multiplierBtnVal = document.getElementById("multiplierVal");
+  const betVal = document.getElementById("betVal");
   const winFlashLayer = document.getElementById("winFlashLayer");
 
   function sleep(ms) { return new Promise((res) => setTimeout(res, ms)); }
@@ -31,10 +36,10 @@ if (player) {
   }
 
   function refreshHud() {
-    hudBet.textContent = betLevels[betIndex];
-    hudCredits.textContent = Math.round(player.credits).toLocaleString();
-    creditsTop.textContent = Math.round(player.credits).toLocaleString() + " cr";
-    if (multiplierBtnVal) multiplierBtnVal.textContent = "x" + betLevels[betIndex];
+    hudBet.textContent = bet.toFixed(1);
+    hudCredits.textContent = formatCredits(player.credits);
+    creditsTop.textContent = formatCredits(player.credits) + " cr";
+    if (betVal) betVal.textContent = bet.toFixed(1);
   }
 
   function setupGridContainer(container, c, r) {
@@ -80,7 +85,7 @@ if (player) {
   */
   function spinReveal(container, c, r, finalGrid) {
     return new Promise((resolve) => {
-      const extraRows = 22;
+      const extraRows = 34;
       const stripLen = extraRows + r;
 
       container.style.display = "flex";
@@ -91,8 +96,8 @@ if (player) {
 
       DrAudio.spinStart();
 
-      const perColDelay = 220;
-      const baseDuration = 1600;
+      const perColDelay = 280;
+      const baseDuration = 2500;
       let remaining = c;
 
       for (let ci = 0; ci < c; ci++) {
@@ -124,14 +129,14 @@ if (player) {
         const delay = ci * perColDelay;
 
         setTimeout(() => {
-          strip.style.transition = `transform ${baseDuration}ms cubic-bezier(0.2, 0.85, 0.25, 1)`;
+          strip.style.transition = `transform ${baseDuration}ms cubic-bezier(0.16, 0.85, 0.3, 1.12)`;
           strip.style.transform = `translateY(-${travel}%)`;
         }, 20 + delay);
 
         setTimeout(() => {
           strip.classList.remove("spinning");
           DrAudio.reelStop();
-        }, delay + baseDuration - 150);
+        }, delay + baseDuration - 260);
 
         setTimeout(() => {
           remaining--;
@@ -139,7 +144,7 @@ if (player) {
             renderGrid(container, finalGrid, c, r, false);
             resolve();
           }
-        }, delay + baseDuration + 60);
+        }, delay + baseDuration + 100);
       }
     });
   }
@@ -151,8 +156,8 @@ if (player) {
       highlightCells(container, cells);
       DrAudio.explosion();
       DrAudio.winChime(Math.min(3, i - 1));
-      const stepWin = Math.round((step.stepMultiplierUnits || 0) * bet);
-      if (stepWin > 0) showWinFlash("+" + stepWin.toLocaleString() + " CREDITS", "cascade");
+      const stepWin = roundBet((step.stepMultiplierUnits || 0) * bet);
+      if (stepWin > 0) showWinFlash("+" + stepWin.toFixed(1) + " CREDITS", "cascade");
       await sleep(480);
       renderGrid(container, step.grid, c, r, true);
       await sleep(300);
@@ -214,7 +219,7 @@ if (player) {
       await sleep(200);
       await playCascadeFrom(bonusReelWindow, BONUS_COLS, BONUS_ROWS, result, lockedBet);
 
-      const spinWin = Math.round(result.totalMultiplierUnits * lockedBet);
+      const spinWin = roundBet(result.totalMultiplierUnits * lockedBet);
       bonusWinTotal += spinWin;
       runningCascadeCount = result.endingCascadeCount;
       if (result.highestMultiplierUsed > highestMult) {
@@ -235,7 +240,7 @@ if (player) {
       }
 
       document.getElementById("bonusMultiplier").textContent = highestMult + "x";
-      document.getElementById("bonusWinTotal").textContent = Math.round(bonusWinTotal).toLocaleString();
+      document.getElementById("bonusWinTotal").textContent = formatCredits(bonusWinTotal);
 
       await sleep(350);
     }
@@ -249,7 +254,7 @@ if (player) {
 
     bonusPlayEl.classList.remove("show");
 
-    document.getElementById("endTotalWin").textContent = Math.round(bonusWinTotal).toLocaleString();
+    document.getElementById("endTotalWin").textContent = formatCredits(bonusWinTotal);
     document.getElementById("endBiggestCascade").textContent = biggestCascadeOverall;
     document.getElementById("endHighestMult").textContent = highestMult + "x";
     document.getElementById("endJackpotStatus").textContent = jackpotHit ? "WIN — 2500 CREDITS" : "NO WIN";
@@ -262,7 +267,6 @@ if (player) {
 
   async function playSpin() {
     if (isSpinning) return;
-    const bet = betLevels[betIndex];
     if (player.credits < bet) {
       alert("Not enough credits.");
       return;
@@ -281,9 +285,9 @@ if (player) {
     await sleep(200);
     await playCascadeFrom(reelWindow, c, r, result, bet);
 
-    const winAmount = Math.round(result.totalMultiplierUnits * bet);
+    const winAmount = roundBet(result.totalMultiplierUnits * bet);
     settleStats(bet, winAmount);
-    document.getElementById("hudWin").textContent = winAmount.toLocaleString();
+    document.getElementById("hudWin").textContent = winAmount.toFixed(1);
     refreshHud();
 
     await maybeInstantJackpot(settings);
@@ -312,19 +316,25 @@ if (player) {
 
   document.getElementById("btnMinBetFloat").addEventListener("click", () => {
     if (isSpinning) return;
-    betIndex = 0;
+    bet = MIN_BET;
     refreshHud();
   });
 
-  document.getElementById("btnMultiplierFloat").addEventListener("click", () => {
+  document.getElementById("btnBetDownFloat").addEventListener("click", () => {
     if (isSpinning) return;
-    betIndex = (betIndex + 1) % betLevels.length;
+    bet = Math.max(MIN_BET, roundBet(bet - BET_STEP));
+    refreshHud();
+  });
+
+  document.getElementById("btnBetUpFloat").addEventListener("click", () => {
+    if (isSpinning) return;
+    bet = Math.min(MAX_BET, roundBet(bet + BET_STEP));
     refreshHud();
   });
 
   document.getElementById("btnMaxBetFloat").addEventListener("click", () => {
     if (isSpinning) return;
-    betIndex = betLevels.length - 1;
+    bet = MAX_BET;
     refreshHud();
   });
 

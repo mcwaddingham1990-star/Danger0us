@@ -1,14 +1,15 @@
 /*
   Spawns a steady flurry of real card-photo sprites from behind the
-  joker, each flying its own randomized course toward the top-right
-  corner. Every card gets its own Web Animations API animation (not a
-  shared CSS keyframe) so paths genuinely differ instead of everything
-  tracing one line with staggered timing.
+  joker, each flying its own randomized course toward either the
+  top-left or top-right corner. Every card gets its own Web Animations
+  API animation (not a shared CSS keyframe) so paths genuinely differ
+  instead of everything tracing one line with staggered timing.
 
   Path variety is pulled from a fixed pool of 24 distinct angle/
-  distance/speed combos. A rolling history of the last 19 picks is
-  excluded from selection, which guarantees the same path can't repeat
-  within any run of 20 cards.
+  distance/speed combos, each usable mirrored left or right — 48
+  effective courses. A rolling history of the last 19 picks (path +
+  direction together) is excluded from selection, which guarantees the
+  exact same course can't repeat within any run of 20 cards.
 */
 (function () {
   const container = document.getElementById("cardStream");
@@ -25,7 +26,7 @@
 
   const PATHS = [];
   for (let i = 0; i < 24; i++) {
-    const angleDeg = 12 + ((i * 2.71) % 68); // spread from near-flat to near-vertical, always up-and-right
+    const angleDeg = 12 + ((i * 2.71) % 68); // spread from near-flat to near-vertical
     const dist = 190 + ((i * 37) % 190); // 190-380px
     const rad = (angleDeg * Math.PI) / 180;
     PATHS.push({
@@ -35,17 +36,19 @@
     });
   }
 
-  const HISTORY_LIMIT = 19; // same path can't repeat within any 20-card run
+  const HISTORY_LIMIT = 19; // same course can't repeat within any 20-card run
   const recent = [];
 
-  function pickPathIndex() {
-    let idx;
+  function pickCourse() {
+    let key, idx, dir;
     do {
       idx = Math.floor(Math.random() * PATHS.length);
-    } while (recent.includes(idx));
-    recent.push(idx);
+      dir = Math.random() < 0.5 ? -1 : 1; // -1 = left, 1 = right
+      key = idx + "_" + dir;
+    } while (recent.includes(key));
+    recent.push(key);
     if (recent.length > HISTORY_LIMIT) recent.shift();
-    return idx;
+    return { path: PATHS[idx], dir };
   }
 
   const GLOW_REST = "drop-shadow(0 0 6px rgba(80,180,255,0.8)) drop-shadow(0 0 14px rgba(50,150,255,0.5)) brightness(1)";
@@ -59,7 +62,8 @@
     img.style.top = (18 + (Math.random() * 6 - 3)) + "%";
     container.appendChild(img);
 
-    const path = PATHS[pickPathIndex()];
+    const { path, dir } = pickCourse();
+    const dx = path.dx * dir;
     const startScale = 0.8 + Math.random() * 0.15;
     const endScale = 0.4 + Math.random() * 0.15;
 
@@ -69,7 +73,7 @@
         { offset: 0.1, opacity: 1 },
         { offset: 0.5, filter: GLOW_PEAK },
         { offset: 0.75, opacity: 1 },
-        { transform: `translate(${path.dx}px, ${path.dy}px) scale(${endScale})`, opacity: 0, filter: GLOW_REST },
+        { transform: `translate(${dx}px, ${path.dy}px) scale(${endScale})`, opacity: 0, filter: GLOW_REST },
       ],
       { duration: path.duration, easing: "linear" }
     );

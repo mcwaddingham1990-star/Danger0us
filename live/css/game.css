@@ -47,7 +47,7 @@ html, body {
   position: absolute;
   left: 48%;
   top: 18%;
-  width: min(7vw, 30px);
+  width: min(11vw, 46px);
   height: auto;
   opacity: 0;
 }

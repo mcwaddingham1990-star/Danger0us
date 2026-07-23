@@ -14,9 +14,9 @@ html, body {
   background-position: top center;
   background-size: cover;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 8vh 8vw 12vh;
+  padding: 26.7vh 8vw 12vh;
 }
 
 .scroll-panel {

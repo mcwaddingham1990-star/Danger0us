@@ -6,7 +6,7 @@
 */
 
 const GRID_COLS = 8;
-const GRID_ROWS = 9;
+const GRID_ROWS = 8;
 
 const SYMBOL_SET = [
   { id: "letter-a", tier: "generic", weight: 22, img: "images/symbols/generic/letter-a.svg" },

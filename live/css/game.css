@@ -47,8 +47,8 @@ html, body {
 
 .stream-card {
   position: absolute;
-  left: 84%;
-  top: 10%;
+  left: 18%;
+  top: 12%;
   width: min(7vw, 30px);
   aspect-ratio: 5 / 7;
   border-radius: 14%;
@@ -77,10 +77,10 @@ html, body {
 .stream-card.s6 { animation-delay: -1.5s, 0s; }
 
 @keyframes streamFly {
-  0%   { transform: translate(0, 0) rotate(-40deg) scale(0.85); opacity: 0; }
+  0%   { transform: translate(0, 0) rotate(-45deg) scale(0.85); opacity: 0; }
   10%  { opacity: 1; }
   75%  { opacity: 1; }
-  100% { transform: translate(-430px, -480px) rotate(-40deg) scale(0.5); opacity: 0; }
+  100% { transform: translate(-220px, -300px) rotate(-45deg) scale(0.5); opacity: 0; }
 }
 
 .trail {
@@ -92,7 +92,7 @@ html, body {
   background: linear-gradient(90deg, rgba(79, 195, 255, 0) 0%, rgba(79, 195, 255, 0.5) 55%, rgba(200, 240, 255, 0.85) 100%);
   border-radius: 999px;
   filter: blur(2px);
-  transform: translate(0, -50%) rotate(47deg);
+  transform: translate(0, -50%) rotate(54deg);
   transform-origin: left center;
   z-index: -1;
 }
@@ -107,7 +107,7 @@ html, body {
   left: 9%;
   right: 7%;
   top: 25%;
-  height: 49%;
+  height: 43.5%;
   display: grid;
   gap: 1px;
   padding: 0.6%;

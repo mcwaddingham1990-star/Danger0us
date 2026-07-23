@@ -25,6 +25,48 @@ html, body {
   background-repeat: no-repeat;
 }
 
+/* Decorative animated cards floating/spinning above the reel window */
+.floating-cards {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 30%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.spin-card {
+  position: absolute;
+  width: 9%;
+  aspect-ratio: 5 / 7;
+  background: linear-gradient(160deg, #f4f7ff, #d7e3f7);
+  border: 1px solid rgba(79, 163, 255, 0.6);
+  border-radius: 12%;
+  box-shadow: 0 0 10px rgba(79, 163, 255, 0.55), 0 0 20px rgba(79, 163, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6vh;
+  font-weight: 800;
+  transform-style: preserve-3d;
+  animation: cardSpinFloat 7s ease-in-out infinite;
+}
+
+.spin-card.red { color: #d8264c; }
+.spin-card.black { color: #1a2230; }
+
+.spin-card.c1 { left: 6%;  top: 4%;  animation-duration: 6.5s; animation-delay: 0s; }
+.spin-card.c2 { right: 6%; top: 4%;  animation-duration: 7.5s; animation-delay: 0.6s; }
+.spin-card.c3 { left: 2%;  top: 17%; animation-duration: 8s;   animation-delay: 1.2s; }
+.spin-card.c4 { right: 2%; top: 17%; animation-duration: 6.8s; animation-delay: 1.8s; }
+
+@keyframes cardSpinFloat {
+  0%   { transform: translateY(0) rotateY(0deg) rotate(0deg); }
+  50%  { transform: translateY(-10px) rotateY(180deg) rotate(8deg); }
+  100% { transform: translateY(0) rotateY(360deg) rotate(0deg); }
+}
+
 .reel-window {
   position: absolute;
   left: 11%;

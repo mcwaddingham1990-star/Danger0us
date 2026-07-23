@@ -176,20 +176,58 @@ html, body {
   100% { transform: scale(0.9); opacity: 0; }
 }
 
+/*
+  Explosion/spark bursts are appended to the reel-window itself (not the
+  tile) and positioned via inline left/top at the tile's pixel center —
+  .tile has overflow:hidden for its background-image, which would clip
+  a burst that's meant to spill outside the tile's own bounds.
+*/
 .explosion {
   position: absolute;
-  inset: 0;
   pointer-events: none;
-  border-radius: 3px;
-  background: radial-gradient(circle, #ffffff 0%, #7fc0ff 35%, rgba(79,163,255,0) 70%);
-  animation: burst 0.45s ease-out forwards;
-  z-index: 3;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, #dff0ff 22%, #7fc0ff 45%, rgba(79,163,255,0) 72%);
+  box-shadow: 0 0 18px 6px rgba(140, 210, 255, 0.8);
+  animation: burst 0.5s cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+  z-index: 4;
+  mix-blend-mode: screen;
 }
 
 @keyframes burst {
-  0% { opacity: 1; transform: scale(0.3); }
-  60% { opacity: 1; transform: scale(1.6); }
-  100% { opacity: 0; transform: scale(2.4); }
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.15); }
+  35%  { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.6); }
+}
+
+.spark {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #eaf7ff;
+  box-shadow: 0 0 6px 2px rgba(150, 210, 255, 0.95);
+  pointer-events: none;
+  z-index: 5;
+  animation: sparkFly 0.55s ease-out forwards;
+}
+
+@keyframes sparkFly {
+  0%   { transform: translate(-50%, -50%) translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0.15); opacity: 0; }
+}
+
+.reel-window.shaking,
+.bonus-reel-window.shaking {
+  animation: cascadeShake 0.22s ease-in-out;
+}
+
+@keyframes cascadeShake {
+  0%   { transform: translate(0, 0); }
+  20%  { transform: translate(-3px, 2px); }
+  40%  { transform: translate(3px, -2px); }
+  60%  { transform: translate(-2px, -2px); }
+  80%  { transform: translate(2px, 2px); }
+  100% { transform: translate(0, 0); }
 }
 
 .control-bar {

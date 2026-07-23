@@ -165,9 +165,28 @@ const DrAudio = (() => {
   }
 
   function reelStop() {
-    const freq = 180 + Math.random() * 60;
-    tone(freq, 0.1, "square", 0.12, 0.002);
-    noiseBurst(0.06, 2500, 0.08, "highpass");
+    ensureCtx();
+    const now = ctx.currentTime;
+
+    // Low mechanical thunk — the reel hitting its stop.
+    const thunkOsc = ctx.createOscillator();
+    thunkOsc.type = "triangle";
+    const thunkFreq = 70 + Math.random() * 20;
+    thunkOsc.frequency.setValueAtTime(thunkFreq * 2.2, now);
+    thunkOsc.frequency.exponentialRampToValueAtTime(thunkFreq, now + 0.08);
+    const thunkGain = ctx.createGain();
+    thunkGain.gain.setValueAtTime(0.0001, now);
+    thunkGain.gain.exponentialRampToValueAtTime(0.4, now + 0.008);
+    thunkGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+    thunkOsc.connect(thunkGain);
+    connectWithReverb(thunkGain, 0.7);
+    thunkOsc.start(now);
+    thunkOsc.stop(now + 0.2);
+
+    // Bright metallic click on top for definition.
+    const freq = 900 + Math.random() * 300;
+    tone(freq, 0.06, "square", 0.1, 0.002);
+    noiseBurst(0.08, 3200, 0.14, "highpass");
   }
 
   function winChime(tierIndex) {
@@ -175,25 +194,50 @@ const DrAudio = (() => {
     [0, 4, 7, 12].forEach((semi, i) => {
       setTimeout(() => pianoNote(base * Math.pow(2, semi / 12), 0.22, 1.1), i * 70);
     });
+    // Sparkly high shimmer layered on top for a "cool" glint.
+    [24, 28, 31].forEach((semi, i) => {
+      setTimeout(() => pianoNote(base * Math.pow(2, semi / 12), 0.08, 0.6), 60 + i * 40);
+    });
   }
 
-  function explosion() {
+  // intensity: roughly the cluster size, used to scale how big the bang is.
+  function explosion(intensity) {
     ensureCtx();
     const now = ctx.currentTime;
+    const power = Math.min(1, 0.55 + (intensity || 5) / 40);
+
+    // Sharp crack transient — the initial "hit".
+    noiseBurst(0.05, 4500, 0.4 * power, "highpass");
+
+    // Sub-bass thump.
     const osc = ctx.createOscillator();
     osc.type = "sine";
-    osc.frequency.setValueAtTime(160, now);
-    osc.frequency.exponentialRampToValueAtTime(35, now + 0.35);
+    osc.frequency.setValueAtTime(170, now);
+    osc.frequency.exponentialRampToValueAtTime(32, now + 0.32);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.4, now + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.55 * power, now + 0.015);
     g.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
     osc.connect(g);
     connectWithReverb(g, 0.9);
     osc.start(now);
     osc.stop(now + 0.45);
 
-    noiseBurst(0.4, 600, 0.32, "lowpass");
+    // Body/rumble.
+    noiseBurst(0.42, 550, 0.38 * power, "lowpass");
+
+    // Bright metallic ring for a "magic" crack, brief and short-lived.
+    const ringOsc = ctx.createOscillator();
+    ringOsc.type = "triangle";
+    ringOsc.frequency.value = 1400 + Math.random() * 500;
+    const ringGain = ctx.createGain();
+    ringGain.gain.setValueAtTime(0.0001, now);
+    ringGain.gain.exponentialRampToValueAtTime(0.12 * power, now + 0.01);
+    ringGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    ringOsc.connect(ringGain);
+    connectWithReverb(ringGain, 0.6);
+    ringOsc.start(now);
+    ringOsc.stop(now + 0.25);
   }
 
   function bonusTrigger() {

@@ -9,20 +9,20 @@ const GRID_COLS = 8;
 const GRID_ROWS = 8;
 
 const SYMBOL_SET = [
-  { id: "letter-a", tier: "generic", weight: 22, img: "images/symbols/generic/letter-a.svg" },
-  { id: "letter-k", tier: "generic", weight: 22, img: "images/symbols/generic/letter-k.svg" },
-  { id: "letter-q", tier: "generic", weight: 22, img: "images/symbols/generic/letter-q.svg" },
-  { id: "letter-j", tier: "generic", weight: 22, img: "images/symbols/generic/letter-j.svg" },
+  { id: "letter-a", tier: "generic", weight: 10, img: "images/symbols/generic/letter-a.svg" },
+  { id: "letter-k", tier: "generic", weight: 10, img: "images/symbols/generic/letter-k.svg" },
+  { id: "letter-q", tier: "generic", weight: 10, img: "images/symbols/generic/letter-q.svg" },
+  { id: "letter-j", tier: "generic", weight: 10, img: "images/symbols/generic/letter-j.svg" },
 
-  { id: "moto-normal", tier: "normal", weight: 5, img: "images/symbols/normal/motorcycle-rear.jpg" },
-  { id: "watch-normal", tier: "normal", weight: 5, img: "images/symbols/normal/watch-gold-black.jpg" },
-  { id: "cash-normal", tier: "normal", weight: 5, img: "images/symbols/normal/cash-stack.jpg" },
+  { id: "moto-normal", tier: "normal", weight: 9, img: "images/symbols/normal/motorcycle-rear.jpg" },
+  { id: "watch-normal", tier: "normal", weight: 9, img: "images/symbols/normal/watch-gold-black.jpg" },
+  { id: "cash-normal", tier: "normal", weight: 9, img: "images/symbols/normal/cash-stack.jpg" },
 
-  { id: "moto-blue", tier: "blue", weight: 2.5, img: "images/symbols/blue/motorcycle-glow.jpg" },
-  { id: "lady-car-blue", tier: "blue", weight: 2.5, img: "images/symbols/blue/lady-car.jpg" },
-  { id: "lady-champagne-blue", tier: "blue", weight: 2.5, img: "images/symbols/blue/lady-champagne.jpg" },
+  { id: "moto-blue", tier: "blue", weight: 5, img: "images/symbols/blue/motorcycle-glow.jpg" },
+  { id: "lady-car-blue", tier: "blue", weight: 5, img: "images/symbols/blue/lady-car.jpg" },
+  { id: "lady-champagne-blue", tier: "blue", weight: 5, img: "images/symbols/blue/lady-champagne.jpg" },
 
-  { id: "lady-red", tier: "red", weight: 1, img: "images/symbols/red/lady-red.jpg" },
+  { id: "lady-red", tier: "red", weight: 6, img: "images/symbols/red/lady-red.jpg" },
 
   { id: "jester", tier: "joker", weight: 0, img: "images/symbols/joker/joker-777.jpg", isWild: true },
 ];

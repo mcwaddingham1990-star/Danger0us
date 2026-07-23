@@ -70,10 +70,43 @@ if (player) {
       const tile = container.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
       if (!tile) return;
       tile.classList.add("winning");
+
+      // Appended to the reel-window, not the tile — .tile has
+      // overflow:hidden (for its background-image) which would clip a
+      // burst/sparks meant to spill outside the tile's own bounds.
+      const cx = tile.offsetLeft + tile.offsetWidth / 2;
+      const cy = tile.offsetTop + tile.offsetHeight / 2;
+
       const boom = document.createElement("div");
       boom.className = "explosion";
-      tile.appendChild(boom);
+      boom.style.left = cx + "px";
+      boom.style.top = cy + "px";
+      boom.style.width = (tile.offsetWidth * 1.7) + "px";
+      boom.style.height = (tile.offsetHeight * 1.7) + "px";
+      container.appendChild(boom);
+      boom.addEventListener("animationend", () => boom.remove());
+
+      const sparkCount = 6;
+      for (let i = 0; i < sparkCount; i++) {
+        const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.6;
+        const dist = 14 + Math.random() * 16;
+        const spark = document.createElement("div");
+        spark.className = "spark";
+        spark.style.left = cx + "px";
+        spark.style.top = cy + "px";
+        spark.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+        spark.style.setProperty("--dy", Math.sin(angle) * dist + "px");
+        container.appendChild(spark);
+        spark.addEventListener("animationend", () => spark.remove());
+      }
     });
+
+    // container is the reel-window (main or bonus) itself.
+    container.classList.remove("shaking");
+    // Force reflow so re-adding the class restarts the animation on
+    // back-to-back cascades instead of a no-op if it's already there.
+    void container.offsetWidth;
+    container.classList.add("shaking");
   }
 
   /*
@@ -154,7 +187,7 @@ if (player) {
       const step = result.steps[i];
       const cells = step.removedCells.map((k) => k.split(",").map(Number));
       highlightCells(container, cells);
-      DrAudio.explosion();
+      DrAudio.explosion(cells.length);
       DrAudio.winChime(Math.min(3, i - 1));
       const stepWin = roundBet((step.stepMultiplierUnits || 0) * bet);
       if (stepWin > 0) showWinFlash("+" + stepWin.toFixed(1) + " CREDITS", "cascade");

@@ -22,7 +22,7 @@ html, body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 34.6vh 5vw 6vh;
+  padding: calc(34.6vh + 50px) 5vw 6vh;
 }
 
 .auth-card {

@@ -47,8 +47,8 @@ html, body {
 
 .stream-card {
   position: absolute;
-  left: 76%;
-  top: 16%;
+  left: 84%;
+  top: 10%;
   width: min(7vw, 30px);
   aspect-ratio: 5 / 7;
   border-radius: 14%;
@@ -111,30 +111,6 @@ html, body {
   display: grid;
   gap: 1px;
   padding: 0.6%;
-}
-
-/*
-  The kneeling models' heads sit at the bottom corners of the reel grid,
-  so the outer-column bottom tiles would otherwise render over their
-  faces. These are clean cutouts of the same models, layered above the
-  reel-window (and above winning-tile glow) so the face always reads as
-  in front of the reel regardless of what's spinning underneath.
-*/
-.model-face {
-  position: absolute;
-  top: 63%;
-  width: 27%;
-  height: auto;
-  z-index: 6;
-  pointer-events: none;
-}
-
-.model-face-left {
-  left: 0;
-}
-
-.model-face-right {
-  right: 0;
 }
 
 .tile {

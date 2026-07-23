@@ -26,13 +26,13 @@
 
   const PATHS = [];
   for (let i = 0; i < 24; i++) {
-    const angleDeg = 12 + ((i * 2.71) % 68); // spread from near-flat to near-vertical
-    const dist = 190 + ((i * 37) % 190); // 190-380px
+    const angleDeg = 6 + ((i * 3.1) % 78); // spread from nearly-flat to nearly-vertical
+    const dist = 200 + ((i * 41) % 260); // 200-460px — wider spread for a chaotic burst
     const rad = (angleDeg * Math.PI) / 180;
     PATHS.push({
       dx: Math.round(Math.cos(rad) * dist),
       dy: -Math.round(Math.sin(rad) * dist),
-      duration: 850 + ((i * 53) % 550), // 850-1400ms — fast
+      duration: 650 + ((i * 53) % 500), // 650-1150ms — fast
     });
   }
 
@@ -58,22 +58,24 @@
     const img = document.createElement("img");
     img.className = "stream-card";
     img.src = CARD_IMAGES[Math.floor(Math.random() * CARD_IMAGES.length)];
-    img.style.left = (48 + (Math.random() * 6 - 3)) + "%";
-    img.style.top = (18 + (Math.random() * 6 - 3)) + "%";
+    img.style.left = (47 + (Math.random() * 8 - 4)) + "%";
+    img.style.top = (15 + (Math.random() * 8 - 4)) + "%";
     container.appendChild(img);
 
     const { path, dir } = pickCourse();
     const dx = path.dx * dir;
-    const startScale = 0.8 + Math.random() * 0.15;
-    const endScale = 0.4 + Math.random() * 0.15;
+    const startScale = 0.75 + Math.random() * 0.2;
+    const endScale = 0.35 + Math.random() * 0.2;
+    const startRot = (Math.random() * 60 - 30);
+    const endRot = startRot + dir * (120 + Math.random() * 200);
 
     const anim = img.animate(
       [
-        { transform: `translate(0px, 0px) scale(${startScale})`, opacity: 0, filter: GLOW_REST },
+        { transform: `translate(0px, 0px) rotate(${startRot}deg) scale(${startScale})`, opacity: 0, filter: GLOW_REST },
         { offset: 0.1, opacity: 1 },
         { offset: 0.5, filter: GLOW_PEAK },
         { offset: 0.75, opacity: 1 },
-        { transform: `translate(${dx}px, ${path.dy}px) scale(${endScale})`, opacity: 0, filter: GLOW_REST },
+        { transform: `translate(${dx}px, ${path.dy}px) rotate(${endRot}deg) scale(${endScale})`, opacity: 0, filter: GLOW_REST },
       ],
       { duration: path.duration, easing: "linear" }
     );
@@ -81,6 +83,8 @@
     anim.onfinish = () => img.remove();
   }
 
-  setInterval(spawn, 160);
+  setInterval(spawn, 90);
+  spawn();
+  spawn();
   spawn();
 })();

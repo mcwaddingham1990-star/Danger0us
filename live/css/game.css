@@ -54,10 +54,10 @@ html, body {
 
 .reel-window {
   position: absolute;
-  left: 9%;
-  right: 7%;
-  top: 25%;
-  height: 43.5%;
+  left: 9.5%;
+  right: 9.5%;
+  top: 31%;
+  height: 39%;
   display: grid;
   gap: 1px;
   padding: 0.6%;
@@ -124,10 +124,10 @@ html, body {
 
 .win-flash-layer {
   position: absolute;
-  left: 8%;
-  right: 6%;
-  top: 27%;
-  height: 46%;
+  left: 10%;
+  right: 10%;
+  top: 33%;
+  height: 35%;
   display: flex;
   align-items: center;
   justify-content: center;

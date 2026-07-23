@@ -20,7 +20,7 @@ html, body {
   background-position: top center;
   background-size: cover;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   padding: 6vh 5vw;
 }

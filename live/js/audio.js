@@ -26,6 +26,23 @@ const DrAudio = (() => {
   // A minor pentatonic-ish, dark register
   const NOTE_SCALE = [220, 246.9, 261.6, 293.7, 329.6, 349.2, 392.0];
 
+  // Cached soft-clip curve used to drive the sub-bass hits into
+  // distortion for a thicker, more "cinematic impact" punch.
+  let distortionCurve = null;
+  function getDistortionCurve() {
+    if (distortionCurve) return distortionCurve;
+    const amount = 55;
+    const n = 44100;
+    const curve = new Float32Array(n);
+    const deg = Math.PI / 180;
+    for (let i = 0; i < n; i++) {
+      const x = (i * 2) / n - 1;
+      curve[i] = ((3 + amount) * x * 20 * deg) / (Math.PI + amount * Math.abs(x));
+    }
+    distortionCurve = curve;
+    return curve;
+  }
+
   function makeImpulse(duration, decay) {
     const rate = ctx.sampleRate;
     const length = Math.floor(rate * duration);
@@ -201,60 +218,108 @@ const DrAudio = (() => {
   }
 
   // intensity: roughly the cluster size, used to scale how big the bang is.
-  function explosion(intensity) {
+  // chained: internal flag set on secondary chain-reaction hits so they
+  // don't spawn further chains of their own.
+  function explosion(intensity, chained) {
     ensureCtx();
     const now = ctx.currentTime;
-    const power = Math.min(1, 0.55 + (intensity || 5) / 40);
+    const power = Math.min(1, 0.65 + (intensity || 5) / 26);
 
-    // Sharp crack transient — the initial "hit".
-    noiseBurst(0.05, 4500, 0.4 * power, "highpass");
+    // Sharp double-crack transient — the initial detonation snap.
+    noiseBurst(0.045, 5200, 0.55 * power, "highpass");
+    noiseBurst(0.09, 2600, 0.32 * power, "highpass");
 
-    // Sub-bass thump.
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(170, now);
-    osc.frequency.exponentialRampToValueAtTime(32, now + 0.32);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.55 * power, now + 0.015);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
-    osc.connect(g);
-    connectWithReverb(g, 0.9);
-    osc.start(now);
-    osc.stop(now + 0.45);
+    // Punchy sub-bass boom, driven through soft distortion for weight
+    // and grit — this is the "you feel it in your chest" layer.
+    const sub = ctx.createOscillator();
+    sub.type = "sine";
+    sub.frequency.setValueAtTime(150, now);
+    sub.frequency.exponentialRampToValueAtTime(30, now + 0.5);
+    const shaper = ctx.createWaveShaper();
+    shaper.curve = getDistortionCurve();
+    shaper.oversample = "4x";
+    const subGain = ctx.createGain();
+    subGain.gain.setValueAtTime(0.0001, now);
+    subGain.gain.exponentialRampToValueAtTime(0.9 * power, now + 0.012);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+    sub.connect(shaper).connect(subGain);
+    connectWithReverb(subGain, 0.85);
+    sub.start(now);
+    sub.stop(now + 0.65);
 
-    // Body/rumble.
-    noiseBurst(0.42, 550, 0.38 * power, "lowpass");
+    // A second, slightly detuned low oscillator underneath for thickness.
+    const sub2 = ctx.createOscillator();
+    sub2.type = "triangle";
+    sub2.frequency.setValueAtTime(138, now);
+    sub2.frequency.exponentialRampToValueAtTime(24, now + 0.55);
+    const sub2Gain = ctx.createGain();
+    sub2Gain.gain.setValueAtTime(0.0001, now);
+    sub2Gain.gain.exponentialRampToValueAtTime(0.5 * power, now + 0.016);
+    sub2Gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+    sub2.connect(sub2Gain);
+    connectWithReverb(sub2Gain, 0.85);
+    sub2.start(now);
+    sub2.stop(now + 0.6);
 
-    // Bright metallic ring for a "magic" crack, brief and short-lived.
+    // Rolling fireball body/rumble — longer and darker than before so
+    // the blast has real trailing weight instead of just cutting off.
+    noiseBurst(0.65, 480, 0.5 * power, "lowpass");
+    noiseBurst(0.95, 200, 0.32 * power, "lowpass");
+
+    // Bright metallic shrapnel ring for a sharp, "cool" glint on top.
     const ringOsc = ctx.createOscillator();
     ringOsc.type = "triangle";
-    ringOsc.frequency.value = 1400 + Math.random() * 500;
+    ringOsc.frequency.value = 1400 + Math.random() * 600;
     const ringGain = ctx.createGain();
     ringGain.gain.setValueAtTime(0.0001, now);
-    ringGain.gain.exponentialRampToValueAtTime(0.12 * power, now + 0.01);
-    ringGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    ringGain.gain.exponentialRampToValueAtTime(0.16 * power, now + 0.01);
+    ringGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
     ringOsc.connect(ringGain);
     connectWithReverb(ringGain, 0.6);
     ringOsc.start(now);
-    ringOsc.stop(now + 0.25);
+    ringOsc.stop(now + 0.28);
+
+    // Debris/embers crackling down after the blast.
+    const debrisCount = 4 + Math.floor(power * 6);
+    for (let i = 0; i < debrisCount; i++) {
+      const delay = 80 + Math.random() * 520;
+      setTimeout(() => {
+        noiseBurst(0.03 + Math.random() * 0.03, 2200 + Math.random() * 3000, 0.09 * power, "highpass");
+      }, delay);
+    }
+
+    // Big clusters chain-react into one or two secondary kabooms, like a
+    // string of blockbuster demolition charges going off in sequence.
+    if (!chained && (intensity || 0) >= 8) {
+      setTimeout(() => explosion(Math.max(3, Math.round((intensity || 8) * 0.6)), true), 110);
+    }
+    if (!chained && (intensity || 0) >= 16) {
+      setTimeout(() => explosion(Math.max(3, Math.round((intensity || 16) * 0.4)), true), 240);
+    }
   }
 
   function bonusTrigger() {
     ensureCtx();
+    // A cinematic detonation announces the bonus before the fanfare hits.
+    explosion(14);
     [0, 3, 6, 10, 12].forEach((semi, i) => {
       setTimeout(() => {
         tone(146.8 * Math.pow(2, semi / 12), 0.9, "sawtooth", 0.14, 0.05);
-      }, i * 150);
+      }, 120 + i * 150);
     });
-    setTimeout(() => noiseBurst(1.2, 1200, 0.15, "bandpass"), 300);
+    setTimeout(() => noiseBurst(1.2, 1200, 0.15, "bandpass"), 400);
   }
 
   function jackpot() {
     ensureCtx();
-    [0, 4, 7, 12, 16, 19, 24].forEach((semi, i) => {
-      setTimeout(() => pianoNote(261.6 * Math.pow(2, semi / 12), 0.26, 1.3), i * 100);
-    });
+    // Huge opening boom — the "screen shake" moment — before the
+    // triumphant fanfare rings out over the top.
+    explosion(28);
+    setTimeout(() => {
+      [0, 4, 7, 12, 16, 19, 24].forEach((semi, i) => {
+        setTimeout(() => pianoNote(261.6 * Math.pow(2, semi / 12), 0.26, 1.3), i * 100);
+      });
+    }, 140);
   }
 
   function scheduleAmbience() {

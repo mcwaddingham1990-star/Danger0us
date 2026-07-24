@@ -58,7 +58,7 @@ if (player) {
         tile.className = "tile";
         tile.dataset.r = ri;
         tile.dataset.c = ci;
-        if (sym) tile.style.backgroundImage = `url('${sym.img}')`;
+        if (sym) tile.style.backgroundImage = `url('${pickSymbolImage(sym)}')`;
         if (fallingCells) tile.classList.add("falling");
         container.appendChild(tile);
       }
@@ -151,7 +151,7 @@ if (player) {
           const sym = symbolById(symId);
           const tile = document.createElement("div");
           tile.className = "tile reel-strip-tile";
-          if (sym) tile.style.backgroundImage = `url('${sym.img}')`;
+          if (sym) tile.style.backgroundImage = `url('${pickSymbolImage(sym)}')`;
           strip.appendChild(tile);
         }
 

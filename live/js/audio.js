@@ -44,7 +44,7 @@ const AudioManager = (() => {
     drone: { pool: ["drone1", "drone2", "drone3", "drone4", "drone5", "drone6", "drone7", "drone8", "drone9"] },
     wind: { pool: ["wind-howl", "wind-blow2", "cinematic-wind"] },
     thunder: { pool: ["thunder1", "thunder2", "thunder-rumble", "thunder-cinematic", "thunder-bass"] },
-    raven: { pool: ["crow-caw", "bird-raven-caw", "bird2"] },
+    raven: { pool: ["crow-caw", "bird-raven-caw"] },
     metal_rattle: { pool: ["metal-rattle"] },
     horror_stinger: { pool: ["horror1", "horror2", "horror3", "horror4", "horror5", "horror6", "horror7", "horror8", "horror9", "horror10", "horror11", "horror12", "horror13", "horror14", "horror15"] },
     heartbeat: { pool: ["heartbeat"] },
@@ -318,12 +318,11 @@ const AudioManager = (() => {
       ],
       periodic: [
         () => schedulePeriodic(() => play("thunder", { gain: 0.5, bus: ambBus }), 25000, 55000),
-        () => schedulePeriodic(() => play("raven", { gain: 0.3, bus: ambBus }), 20000, 45000),
+        () => schedulePeriodic(() => play("raven", { gain: 0.3, bus: ambBus }), 30000, 60000),
         () => schedulePeriodic(() => play("metal_rattle", { gain: 0.28, bus: ambBus }), 24000, 45000),
-        () => schedulePeriodic(() => play("horror_stinger", { gain: 0.22, bus: ambBus, stopAt: 3.5 }), 18000, 40000),
+        () => schedulePeriodic(() => play("horror_stinger", { gain: 0.16, bus: ambBus, stopAt: 2.5 }), 50000, 100000),
         () => schedulePeriodic(() => play("heartbeat", { gain: 0.35, rate: 0.9, bus: ambBus }), 45000, 90000),
       ],
-      music: "main_theme",
     },
     lobby: {
       loops: [
@@ -347,7 +346,6 @@ const AudioManager = (() => {
         () => schedulePeriodic(() => play("electric_small", { gain: 0.15, bus: ambBus }), 15000, 28000),
         () => schedulePeriodic(() => play("thunder", { gain: 0.2, bus: ambBus }), 40000, 70000),
       ],
-      music: "main_theme",
     },
     bonus: {
       loops: [

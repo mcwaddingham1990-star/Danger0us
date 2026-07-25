@@ -127,7 +127,7 @@ if (player) {
       container.style.gridTemplateRows = "";
       container.innerHTML = "";
 
-      DrAudio.spinStart();
+      DrAudio.reelStart();
 
       const perColDelay = 280;
       const baseDuration = 2500;
@@ -176,6 +176,7 @@ if (player) {
           remaining--;
           if (remaining === 0) {
             renderGrid(container, finalGrid, c, r, false);
+            DrAudio.symbolsLanded(finalGrid.flat());
             resolve();
           }
         }, delay + baseDuration + 100);
@@ -226,7 +227,7 @@ if (player) {
     document.getElementById("bonusAnnounce").classList.add("show");
     DrAudio.bonusTrigger();
     DrAudio.enterScene("bonus");
-    DrAudio.maybeVoiceLine(0.3, "jackpot_awaits");
+    DrAudio.maybeVoiceLine(0.3);
     await sleep(2200);
     document.getElementById("bonusAnnounce").classList.remove("show");
 
@@ -324,7 +325,8 @@ if (player) {
 
     const winAmount = roundBet(result.totalMultiplierUnits * bet);
     settleStats(bet, winAmount);
-    document.getElementById("hudWin").textContent = winAmount.toFixed(1);
+    const prevWin = parseFloat(document.getElementById("hudWin").textContent) || 0;
+    DrAudio.animateCountUp(document.getElementById("hudWin"), prevWin, winAmount, 700, "win_count");
     refreshHud();
 
     await maybeInstantJackpot(settings);
@@ -338,9 +340,14 @@ if (player) {
     document.getElementById("btnSpinFloat").classList.remove("disabled");
   }
 
+  document.querySelectorAll(".ctrl-btn, .stepper-btn").forEach((btn) => {
+    btn.addEventListener("mouseenter", () => DrAudio.hoverSound());
+  });
+
   document.getElementById("btnSpinFloat").addEventListener("click", () => {
     DrAudio.start();
     DrAudio.enterScene("game");
+    DrAudio.spinButtonPress();
     DrAudio.maybeVoiceLine(0.1);
     playSpin();
   });
@@ -349,6 +356,7 @@ if (player) {
   muteBtn.addEventListener("click", () => {
     DrAudio.start();
     DrAudio.enterScene("game");
+    DrAudio.clickSound();
     const next = !DrAudio.isMuted();
     DrAudio.setMuted(next);
     muteBtn.textContent = next ? "🔇" : "🔊";
@@ -356,24 +364,28 @@ if (player) {
 
   document.getElementById("btnMinBetFloat").addEventListener("click", () => {
     if (isSpinning) return;
+    DrAudio.clickSound();
     bet = MIN_BET;
     refreshHud();
   });
 
   document.getElementById("btnBetDownFloat").addEventListener("click", () => {
     if (isSpinning) return;
+    DrAudio.clickSound();
     bet = Math.max(MIN_BET, roundBet(bet - BET_STEP));
     refreshHud();
   });
 
   document.getElementById("btnBetUpFloat").addEventListener("click", () => {
     if (isSpinning) return;
+    DrAudio.clickSound();
     bet = Math.min(MAX_BET, roundBet(bet + BET_STEP));
     refreshHud();
   });
 
   document.getElementById("btnMaxBetFloat").addEventListener("click", () => {
     if (isSpinning) return;
+    DrAudio.clickSound();
     bet = MAX_BET;
     refreshHud();
   });

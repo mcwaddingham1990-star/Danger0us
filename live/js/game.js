@@ -166,9 +166,10 @@ if (player) {
           strip.style.transform = `translateY(-${travel}%)`;
         }, 20 + delay);
 
+        const isLastCol = ci === c - 1;
         setTimeout(() => {
           strip.classList.remove("spinning");
-          DrAudio.reelStop();
+          DrAudio.reelStop(isLastCol);
         }, delay + baseDuration - 260);
 
         setTimeout(() => {
@@ -187,12 +188,12 @@ if (player) {
       const step = result.steps[i];
       const cells = step.removedCells.map((k) => k.split(",").map(Number));
       highlightCells(container, cells);
-      DrAudio.explosion(cells.length);
-      DrAudio.winChime(Math.min(3, i - 1));
+      DrAudio.winHit(cells.length);
       const stepWin = roundBet((step.stepMultiplierUnits || 0) * bet);
       if (stepWin > 0) showWinFlash("+" + stepWin.toFixed(1) + " CREDITS", "cascade");
       await sleep(480);
       renderGrid(container, step.grid, c, r, true);
+      DrAudio.cascadeSlam();
       await sleep(300);
     }
   }
@@ -213,7 +214,7 @@ if (player) {
       refreshHud();
       DrAudio.jackpot();
       showWinFlash("MEGA JACKPOT! +2500", "jackpot");
-      await sleep(1700);
+      await sleep(2600);
       return true;
     }
     return false;
@@ -224,6 +225,8 @@ if (player) {
     document.getElementById("freeSpinsAwarded").textContent = freeSpinsAwarded;
     document.getElementById("bonusAnnounce").classList.add("show");
     DrAudio.bonusTrigger();
+    DrAudio.enterScene("bonus");
+    DrAudio.maybeVoiceLine(0.3, "jackpot_awaits");
     await sleep(2200);
     document.getElementById("bonusAnnounce").classList.remove("show");
 
@@ -258,7 +261,7 @@ if (player) {
       if (result.highestMultiplierUsed > highestMult) {
         highestMult = result.highestMultiplierUsed;
         showWinFlash(highestMult + "X MULTIPLIER!", "bonus");
-        DrAudio.winChime(3);
+        DrAudio.multiplierHit(highestMult);
       }
       biggestCascadeOverall = Math.max(biggestCascadeOverall, result.biggestCluster);
 
@@ -269,7 +272,7 @@ if (player) {
       if (jackpotHit && !wasJackpot) {
         DrAudio.jackpot();
         showWinFlash("JACKPOT +2500!", "jackpot");
-        await sleep(1700);
+        await sleep(2600);
       }
 
       document.getElementById("bonusMultiplier").textContent = highestMult + "x";
@@ -286,6 +289,7 @@ if (player) {
     refreshHud();
 
     bonusPlayEl.classList.remove("show");
+    DrAudio.enterScene("game");
 
     document.getElementById("endTotalWin").textContent = formatCredits(bonusWinTotal);
     document.getElementById("endBiggestCascade").textContent = biggestCascadeOverall;
@@ -336,12 +340,15 @@ if (player) {
 
   document.getElementById("btnSpinFloat").addEventListener("click", () => {
     DrAudio.start();
+    DrAudio.enterScene("game");
+    DrAudio.maybeVoiceLine(0.1);
     playSpin();
   });
 
   const muteBtn = document.getElementById("btnMute");
   muteBtn.addEventListener("click", () => {
     DrAudio.start();
+    DrAudio.enterScene("game");
     const next = !DrAudio.isMuted();
     DrAudio.setMuted(next);
     muteBtn.textContent = next ? "🔇" : "🔊";

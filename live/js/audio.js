@@ -1,394 +1,488 @@
 /*
-  Sound system built on the Web Audio API — everything here is synthesized
-  in-browser, no external audio files required.
+  Sample-based sound engine for Dangerous Rides.
 
-  Background music: there is no way to synthesize a real recorded piano
-  performance from oscillators, so this generates a sparse, slow sequence
-  of decaying plucked "piano-like" notes in a minor key over a very quiet
-  sustained drone, run through a procedural reverb for atmosphere — a
-  haunting ambient bed, not a real piano recording. If a real track is
-  placed at live/audio/bgm.mp3 (or .ogg), it automatically takes over and
-  this stops.
+  Every sound here is a real recorded sample (see live/audio/sfx/), layered
+  and sequenced through the Web Audio API — nothing is synthesized from
+  oscillators. Loops (ambience beds) and one-shots (impacts, stingers) all
+  route through a small set of gain buses so mute/volume is centralized.
+
+  If a real composed music track is ever dropped at live/audio/music/
+  lobby.mp3 or bonus.mp3, it automatically takes over from the generative
+  rhythmic pulse for that scene.
 */
 
 const DrAudio = (() => {
+  const SFX_DIR = "audio/sfx/";
+  const MUSIC_DIR = "audio/music/";
+  const VOICE_DIR = "audio/voice/";
+
   let ctx = null;
-  let masterGain = null;
-  let reverb = null;
-  let reverbWet = null;
-  let ambienceGain = null;
-  let ambienceRunning = false;
-  let ambienceTimer = null;
-  let droneOsc = null;
+  let masterGain, sfxBus, ambBus, musicBus, voiceBus;
   let muted = false;
-  let realMusicEl = null;
 
-  // A minor pentatonic-ish, dark register
-  const NOTE_SCALE = [220, 246.9, 261.6, 293.7, 329.6, 349.2, 392.0];
-
-  // Cached soft-clip curve used to drive the sub-bass hits into
-  // distortion for a thicker, more "cinematic impact" punch.
-  let distortionCurve = null;
-  function getDistortionCurve() {
-    if (distortionCurve) return distortionCurve;
-    const amount = 55;
-    const n = 44100;
-    const curve = new Float32Array(n);
-    const deg = Math.PI / 180;
-    for (let i = 0; i < n; i++) {
-      const x = (i * 2) / n - 1;
-      curve[i] = ((3 + amount) * x * 20 * deg) / (Math.PI + amount * Math.abs(x));
-    }
-    distortionCurve = curve;
-    return curve;
-  }
-
-  function makeImpulse(duration, decay) {
-    const rate = ctx.sampleRate;
-    const length = Math.floor(rate * duration);
-    const impulse = ctx.createBuffer(2, length, rate);
-    for (let ch = 0; ch < 2; ch++) {
-      const data = impulse.getChannelData(ch);
-      for (let i = 0; i < length; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
-      }
-    }
-    return impulse;
-  }
+  const bufferCache = {}; // name -> Promise<AudioBuffer|null>
 
   function ensureCtx() {
     if (!ctx) {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
-
       masterGain = ctx.createGain();
-      masterGain.gain.value = muted ? 0 : 0.9;
+      masterGain.gain.value = muted ? 0 : 1;
       masterGain.connect(ctx.destination);
 
-      reverb = ctx.createConvolver();
-      reverb.buffer = makeImpulse(2.6, 2.5);
-      reverbWet = ctx.createGain();
-      reverbWet.gain.value = 0.35;
-      reverb.connect(reverbWet).connect(masterGain);
+      sfxBus = ctx.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(masterGain);
+      ambBus = ctx.createGain(); ambBus.gain.value = 0.7; ambBus.connect(masterGain);
+      musicBus = ctx.createGain(); musicBus.gain.value = 0.55; musicBus.connect(masterGain);
+      voiceBus = ctx.createGain(); voiceBus.gain.value = 0.85; voiceBus.connect(masterGain);
     }
     if (ctx.state === "suspended") ctx.resume();
     return ctx;
   }
 
-  // Sends a signal to both the dry master bus and the reverb bus.
-  function connectWithReverb(node, dryLevel) {
-    const dry = ctx.createGain();
-    dry.gain.value = dryLevel != null ? dryLevel : 1;
-    node.connect(dry).connect(masterGain);
-    node.connect(reverb);
+  function loadBuffer(dir, name) {
+    const key = dir + name;
+    if (bufferCache[key]) return bufferCache[key];
+    bufferCache[key] = fetch(dir + name + ".mp3")
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+      .then((data) => ctx.decodeAudioData(data))
+      .catch(() => null);
+    return bufferCache[key];
   }
 
-  function envGain(duration, peak, attack) {
-    const g = ctx.createGain();
-    const now = ctx.currentTime;
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(Math.max(0.001, peak), now + (attack || 0.02));
-    g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    return g;
-  }
-
-  function noiseBuffer(duration) {
-    const bufferSize = Math.floor(ctx.sampleRate * duration);
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-    return buffer;
-  }
-
-  function noiseBurst(duration, filterFreq, peak, filterType) {
+  // One-shot sample playback. opts: gain, rate, delay(s from now), bus,
+  // stopAt(s) — cuts the sample short with a quick fade instead of a click.
+  function play(name, opts) {
+    opts = opts || {};
     ensureCtx();
-    const src = ctx.createBufferSource();
-    src.buffer = noiseBuffer(duration);
-    const filter = ctx.createBiquadFilter();
-    filter.type = filterType || "lowpass";
-    filter.frequency.value = filterFreq || 800;
-    const g = envGain(duration, peak || 0.35, 0.01);
-    src.connect(filter).connect(g);
-    connectWithReverb(g, 0.9);
-    src.start();
-  }
-
-  function tone(freq, duration, type, peak, attack) {
-    ensureCtx();
-    const osc = ctx.createOscillator();
-    osc.type = type || "sine";
-    osc.frequency.value = freq;
-    const g = envGain(duration, peak || 0.3, attack);
-    osc.connect(g);
-    connectWithReverb(g, 0.85);
-    osc.start();
-    osc.stop(ctx.currentTime + duration + 0.05);
-  }
-
-  // A single plucked, piano-like note: fundamental + a couple of quiet
-  // harmonics through a filter that darkens as the note decays.
-  function pianoNote(freq, peak, duration) {
-    ensureCtx();
-    const now = ctx.currentTime;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(peak, now + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(3200, now);
-    filter.frequency.exponentialRampToValueAtTime(400, now + duration);
-    filter.Q.value = 0.4;
-
-    g.connect(filter);
-    connectWithReverb(filter, 0.7);
-
-    [1, 2, 3.01].forEach((mult, i) => {
-      const osc = ctx.createOscillator();
-      osc.type = i === 0 ? "triangle" : "sine";
-      osc.frequency.value = freq * mult;
-      const partialGain = ctx.createGain();
-      partialGain.gain.value = i === 0 ? 1 : 0.16 / i;
-      osc.connect(partialGain).connect(g);
-      osc.start(now);
-      osc.stop(now + duration + 0.1);
+    return loadBuffer(SFX_DIR, name).then((buffer) => {
+      if (!buffer) return null;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.playbackRate.value = opts.rate || 1;
+      const g = ctx.createGain();
+      const peak = opts.gain != null ? opts.gain : 1;
+      g.gain.value = peak;
+      src.connect(g).connect(opts.bus || sfxBus);
+      const startAt = ctx.currentTime + (opts.delay || 0);
+      src.start(startAt);
+      if (opts.stopAt) {
+        const fadeStart = startAt + Math.max(0.05, opts.stopAt - 0.12);
+        g.gain.setValueAtTime(peak, fadeStart);
+        g.gain.linearRampToValueAtTime(0.0001, startAt + opts.stopAt);
+        src.stop(startAt + opts.stopAt + 0.05);
+      }
+      return src;
     });
   }
 
+  function layer(list) { (list || []).forEach((spec) => play(spec.name, spec)); }
+
+  function playVoice(name, opts) {
+    opts = opts || {};
+    ensureCtx();
+    return loadBuffer(VOICE_DIR, name).then((buffer) => {
+      if (!buffer) return null;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const g = ctx.createGain();
+      g.gain.value = opts.gain != null ? opts.gain : 0.85;
+      src.connect(g).connect(voiceBus);
+      src.start(ctx.currentTime + (opts.delay || 0));
+      return src;
+    });
+  }
+
+  // Loops a sample indefinitely on a bus; returns a token for stopLoop().
+  function startLoop(name, opts) {
+    opts = opts || {};
+    ensureCtx();
+    const token = { stopped: false };
+    loadBuffer(SFX_DIR, name).then((buffer) => {
+      if (!buffer || token.stopped) return;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      src.playbackRate.value = opts.rate || 1;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(opts.gain != null ? opts.gain : 0.3, ctx.currentTime + (opts.fadeIn != null ? opts.fadeIn : 1.5));
+      src.connect(g).connect(opts.bus || ambBus);
+      src.start();
+      token.source = src;
+      token.gain = g;
+    });
+    return token;
+  }
+
+  function stopLoop(token, fadeOut) {
+    if (!token || token.stopped) return;
+    token.stopped = true;
+    if (token.source && token.gain) {
+      const now = ctx.currentTime;
+      const g = token.gain;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setValueAtTime(g.gain.value, now);
+      g.gain.linearRampToValueAtTime(0.0001, now + (fadeOut != null ? fadeOut : 1.2));
+      try { token.source.stop(now + (fadeOut != null ? fadeOut : 1.2) + 0.05); } catch (e) {}
+    }
+  }
+
+  // Repeats fn() at a random interval in [minMs, maxMs], with a random
+  // initial delay so parallel periodic layers don't sync up on a scene.
+  function schedulePeriodic(fn, minMs, maxMs) {
+    let cancelled = false;
+    let timer = null;
+    function tick() {
+      if (cancelled) return;
+      fn();
+      timer = setTimeout(tick, minMs + Math.random() * Math.max(0, maxMs - minMs));
+    }
+    timer = setTimeout(tick, Math.random() * minMs);
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  // ---- Scenes: looping ambience beds + periodic accent one-shots -------
+
+  const SCENES = {
+    login: {
+      loops: [
+        { name: "drone2", gain: 0.28, bus: () => ambBus },
+        { name: "wind-howl", gain: 0.16, bus: () => ambBus },
+      ],
+      periodic: [
+        () => schedulePeriodic(() => play(pick(["thunder-cinematic", "thunder1", "thunder2"]), { gain: 0.5, bus: ambBus }), 20000, 40000),
+        () => schedulePeriodic(() => play(pick(["crow-caw", "bird-raven-caw"]), { gain: 0.3, bus: ambBus }), 15000, 32000),
+        () => schedulePeriodic(() => play("metal-rattle", { gain: 0.28, bus: ambBus }), 24000, 42000),
+        () => schedulePeriodic(() => play(pick(["electric-crackle1", "electric-crackle2"]), { gain: 0.22, bus: ambBus }), 6000, 12000),
+        () => schedulePeriodic(() => play("heartbeat", { gain: 0.35, rate: 0.9, bus: ambBus }), 2300, 2700),
+      ],
+    },
+    lobby: {
+      loops: [
+        { name: "drone3", gain: 0.25, bus: () => ambBus },
+        { name: "cinematic-wind", gain: 0.15, bus: () => ambBus },
+      ],
+      music: { pulseName: "thud", pulseMs: 600, pulseGain: 0.18, accentName: "battle-boom", accentMs: 4800, accentGain: 0.22 },
+      periodic: [
+        () => schedulePeriodic(() => play("thunder-cinematic", { gain: 0.32, bus: ambBus }), 18000, 34000),
+        () => schedulePeriodic(() => play(pick(["swish", "swish2"]), { gain: 0.3, bus: ambBus }), 9000, 16000),
+        () => schedulePeriodic(() => play(pick(["motorcycle-rev", "motorcycle2"]), { gain: 0.28, bus: ambBus, stopAt: 2.2 }), 22000, 40000),
+        () => schedulePeriodic(() => play("thunder-bass", { gain: 0.3, bus: ambBus, stopAt: 2.0 }), 20000, 38000),
+        () => schedulePeriodic(() => play("electric-crackle2", { gain: 0.2, bus: ambBus }), 10000, 18000),
+      ],
+    },
+    game: {
+      loops: [
+        { name: "wind-blow2", gain: 0.12, bus: () => ambBus },
+        { name: "drone7", gain: 0.15, bus: () => ambBus },
+      ],
+      periodic: [
+        () => schedulePeriodic(() => play("electric-crackle1", { gain: 0.15, bus: ambBus }), 15000, 28000),
+        () => schedulePeriodic(() => play("thunder-cinematic", { gain: 0.2, bus: ambBus }), 40000, 70000),
+      ],
+    },
+    bonus: {
+      loops: [
+        { name: "thunder-rumble", gain: 0.22, bus: () => ambBus },
+      ],
+      music: { pulseName: "thud", pulseMs: 430, pulseGain: 0.26, accentName: "battle-boom", accentAltName: "war-boom", accentMs: 3200, accentGain: 0.3 },
+      periodic: [
+        () => schedulePeriodic(() => play("brass-cinematic", { gain: 0.3, bus: ambBus, stopAt: 3.5 }), 9000, 15000),
+        () => schedulePeriodic(() => play("voices1", { gain: 0.22, bus: ambBus, stopAt: 3.0 }), 12000, 20000),
+        () => schedulePeriodic(() => play("mystic-tones", { gain: 0.2, bus: ambBus }), 5000, 9000),
+        () => schedulePeriodic(() => play("motorcycle-rev", { gain: 0.22, bus: ambBus, stopAt: 1.8 }), 20000, 30000),
+      ],
+    },
+  };
+
+  let currentSceneName = null;
+  let activeLoopTokens = [];
+  let activeTimerCancels = [];
+  let musicPulseCancel = null;
+  let musicAccentCancel = null;
+  const realMusicEls = {};
+
+  function stopMusicPulse() {
+    if (musicPulseCancel) { musicPulseCancel(); musicPulseCancel = null; }
+    if (musicAccentCancel) { musicAccentCancel(); musicAccentCancel = null; }
+  }
+
+  function startMusicPulse(cfg) {
+    stopMusicPulse();
+    let cancelled = false;
+    function pulseTick() {
+      if (cancelled) return;
+      play(cfg.pulseName, { gain: cfg.pulseGain * (0.85 + Math.random() * 0.3), bus: musicBus });
+      setTimeout(pulseTick, cfg.pulseMs);
+    }
+    pulseTick();
+    musicPulseCancel = () => { cancelled = true; };
+
+    musicAccentCancel = schedulePeriodic(() => {
+      const name = cfg.accentAltName && Math.random() < 0.5 ? cfg.accentAltName : cfg.accentName;
+      play(name, { gain: cfg.accentGain, bus: musicBus, stopAt: 1.8 });
+    }, cfg.accentMs * 0.8, cfg.accentMs * 1.2);
+  }
+
+  function tryMusicOverride(sceneName) {
+    const el = new Audio(MUSIC_DIR + sceneName + ".mp3");
+    el.loop = true;
+    el.addEventListener("canplaythrough", () => {
+      if (currentSceneName !== sceneName || realMusicEls[sceneName]) return;
+      stopMusicPulse();
+      ensureCtx();
+      try {
+        const src = ctx.createMediaElementSource(el);
+        src.connect(musicBus);
+      } catch (e) {}
+      el.volume = 1;
+      el.play().catch(() => {});
+      realMusicEls[sceneName] = el;
+    }, { once: true });
+  }
+
+  function enterScene(name) {
+    if (currentSceneName === name) return;
+    exitScene();
+    const scene = SCENES[name];
+    if (!scene) return;
+    ensureCtx();
+    currentSceneName = name;
+
+    activeLoopTokens = (scene.loops || []).map((l) => startLoop(l.name, { gain: l.gain, bus: ambBus, fadeIn: 2 }));
+    activeTimerCancels = (scene.periodic || []).map((fn) => fn());
+
+    if (scene.music) {
+      startMusicPulse(scene.music);
+      tryMusicOverride(name);
+    }
+  }
+
+  function exitScene() {
+    if (!currentSceneName) return;
+    activeLoopTokens.forEach((t) => stopLoop(t, 1.0));
+    activeLoopTokens = [];
+    activeTimerCancels.forEach((c) => c());
+    activeTimerCancels = [];
+    stopMusicPulse();
+    const prev = currentSceneName;
+    if (realMusicEls[prev]) {
+      try { realMusicEls[prev].pause(); } catch (e) {}
+      delete realMusicEls[prev];
+    }
+    currentSceneName = null;
+  }
+
+  function duckMusic(toGain, downTime, holdMs, upTime) {
+    if (!musicBus) return;
+    const now = ctx.currentTime;
+    musicBus.gain.cancelScheduledValues(now);
+    musicBus.gain.setValueAtTime(musicBus.gain.value, now);
+    musicBus.gain.linearRampToValueAtTime(toGain, now + downTime);
+    setTimeout(() => {
+      const t = ctx.currentTime;
+      musicBus.gain.cancelScheduledValues(t);
+      musicBus.gain.setValueAtTime(musicBus.gain.value, t);
+      musicBus.gain.linearRampToValueAtTime(0.55, t + upTime);
+    }, holdMs);
+  }
+
+  // ---- Game event cues ---------------------------------------------
+
+  // Spin button press + reels engaging, as one continuous cue: heavy
+  // click -> charge -> sub bass, then gears/chain/cards spinning up.
   function spinStart() {
-    ensureCtx();
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(120, now);
-    osc.frequency.exponentialRampToValueAtTime(480, now + 0.4);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(300, now);
-    filter.frequency.exponentialRampToValueAtTime(2200, now + 0.4);
-
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.22, now + 0.06);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
-
-    osc.connect(filter).connect(g);
-    connectWithReverb(g, 0.8);
-    osc.start(now);
-    osc.stop(now + 0.5);
-
-    noiseBurst(0.3, 1800, 0.08, "highpass");
+    layer([
+      { name: "metallic-click1", gain: 0.9 },
+      { name: "electric-crackle2", gain: 0.5, delay: 0.04 },
+      { name: "impact-loud", gain: 0.6, delay: 0.1 },
+      { name: "metal-hit", gain: 0.5, delay: 0.22 },
+      { name: "metal-sword", gain: 0.45, delay: 0.26 },
+      { name: "metal-rattle", gain: 0.35, delay: 0.34 },
+      { name: "whip", gain: 0.4, delay: 0.42 },
+      { name: "whip2", gain: 0.35, delay: 0.5 },
+      { name: "electric-charge", gain: 0.4, delay: 0.6 },
+      { name: "spin-loop", gain: 0.35, delay: 0.85, stopAt: 3.0 },
+    ]);
   }
 
-  function reelStop() {
-    ensureCtx();
-    const now = ctx.currentTime;
-
-    // Low mechanical thunk — the reel hitting its stop.
-    const thunkOsc = ctx.createOscillator();
-    thunkOsc.type = "triangle";
-    const thunkFreq = 70 + Math.random() * 20;
-    thunkOsc.frequency.setValueAtTime(thunkFreq * 2.2, now);
-    thunkOsc.frequency.exponentialRampToValueAtTime(thunkFreq, now + 0.08);
-    const thunkGain = ctx.createGain();
-    thunkGain.gain.setValueAtTime(0.0001, now);
-    thunkGain.gain.exponentialRampToValueAtTime(0.4, now + 0.008);
-    thunkGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-    thunkOsc.connect(thunkGain);
-    connectWithReverb(thunkGain, 0.7);
-    thunkOsc.start(now);
-    thunkOsc.stop(now + 0.2);
-
-    // Bright metallic click on top for definition.
-    const freq = 900 + Math.random() * 300;
-    tone(freq, 0.06, "square", 0.1, 0.002);
-    noiseBurst(0.08, 3200, 0.14, "highpass");
-  }
-
-  function winChime(tierIndex) {
-    const base = 523.3 * Math.pow(2, (tierIndex || 0) * 0.16); // C5 climbing by tier
-    [0, 4, 7, 12].forEach((semi, i) => {
-      setTimeout(() => pianoNote(base * Math.pow(2, semi / 12), 0.22, 1.1), i * 70);
-    });
-    // Sparkly high shimmer layered on top for a "cool" glint.
-    [24, 28, 31].forEach((semi, i) => {
-      setTimeout(() => pianoNote(base * Math.pow(2, semi / 12), 0.08, 0.6), 60 + i * 40);
-    });
-  }
-
-  // intensity: roughly the cluster size, used to scale how big the bang is.
-  // chained: internal flag set on secondary chain-reaction hits so they
-  // don't spawn further chains of their own.
-  function explosion(intensity, chained) {
-    ensureCtx();
-    const now = ctx.currentTime;
-    const power = Math.min(1, 0.65 + (intensity || 5) / 26);
-
-    // Sharp double-crack transient — the initial detonation snap.
-    noiseBurst(0.045, 5200, 0.55 * power, "highpass");
-    noiseBurst(0.09, 2600, 0.32 * power, "highpass");
-
-    // Punchy sub-bass boom, driven through soft distortion for weight
-    // and grit — this is the "you feel it in your chest" layer.
-    const sub = ctx.createOscillator();
-    sub.type = "sine";
-    sub.frequency.setValueAtTime(150, now);
-    sub.frequency.exponentialRampToValueAtTime(30, now + 0.5);
-    const shaper = ctx.createWaveShaper();
-    shaper.curve = getDistortionCurve();
-    shaper.oversample = "4x";
-    const subGain = ctx.createGain();
-    subGain.gain.setValueAtTime(0.0001, now);
-    subGain.gain.exponentialRampToValueAtTime(0.9 * power, now + 0.012);
-    subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
-    sub.connect(shaper).connect(subGain);
-    connectWithReverb(subGain, 0.85);
-    sub.start(now);
-    sub.stop(now + 0.65);
-
-    // A second, slightly detuned low oscillator underneath for thickness.
-    const sub2 = ctx.createOscillator();
-    sub2.type = "triangle";
-    sub2.frequency.setValueAtTime(138, now);
-    sub2.frequency.exponentialRampToValueAtTime(24, now + 0.55);
-    const sub2Gain = ctx.createGain();
-    sub2Gain.gain.setValueAtTime(0.0001, now);
-    sub2Gain.gain.exponentialRampToValueAtTime(0.5 * power, now + 0.016);
-    sub2Gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
-    sub2.connect(sub2Gain);
-    connectWithReverb(sub2Gain, 0.85);
-    sub2.start(now);
-    sub2.stop(now + 0.6);
-
-    // Rolling fireball body/rumble — longer and darker than before so
-    // the blast has real trailing weight instead of just cutting off.
-    noiseBurst(0.65, 480, 0.5 * power, "lowpass");
-    noiseBurst(0.95, 200, 0.32 * power, "lowpass");
-
-    // Bright metallic shrapnel ring for a sharp, "cool" glint on top.
-    const ringOsc = ctx.createOscillator();
-    ringOsc.type = "triangle";
-    ringOsc.frequency.value = 1400 + Math.random() * 600;
-    const ringGain = ctx.createGain();
-    ringGain.gain.setValueAtTime(0.0001, now);
-    ringGain.gain.exponentialRampToValueAtTime(0.16 * power, now + 0.01);
-    ringGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
-    ringOsc.connect(ringGain);
-    connectWithReverb(ringGain, 0.6);
-    ringOsc.start(now);
-    ringOsc.stop(now + 0.28);
-
-    // Debris/embers crackling down after the blast.
-    const debrisCount = 4 + Math.floor(power * 6);
-    for (let i = 0; i < debrisCount; i++) {
-      const delay = 80 + Math.random() * 520;
-      setTimeout(() => {
-        noiseBurst(0.03 + Math.random() * 0.03, 2200 + Math.random() * 3000, 0.09 * power, "highpass");
-      }, delay);
-    }
-
-    // Big clusters chain-react into one or two secondary kabooms, like a
-    // string of blockbuster demolition charges going off in sequence.
-    if (!chained && (intensity || 0) >= 8) {
-      setTimeout(() => explosion(Math.max(3, Math.round((intensity || 8) * 0.6)), true), 110);
-    }
-    if (!chained && (intensity || 0) >= 16) {
-      setTimeout(() => explosion(Math.max(3, Math.round((intensity || 16) * 0.4)), true), 240);
+  // Each reel stopping: light CLACK, except the last column which lands
+  // as a heavier CLANK — the climax of the spin.
+  function reelStop(isLast) {
+    if (isLast) {
+      layer([
+        { name: "stomp1", gain: 0.75 },
+        { name: "impact2", gain: 0.55, delay: 0.02 },
+        { name: "impact-loud", gain: 0.4, delay: 0.04 },
+      ]);
+    } else {
+      layer([
+        { name: "stomp2", gain: 0.55 },
+        { name: "impact1", gain: 0.3, delay: 0.02 },
+      ]);
     }
   }
 
+  // Tiered win cue, scaled by cluster size — small/medium/huge. This is
+  // the single "everything gets louder" escalation the win moments hinge on.
+  function winHit(clusterSize) {
+    const size = clusterSize || 0;
+    if (size >= 20) {
+      layer([
+        { name: "cinematic-boom", gain: 0.85 },
+        { name: "fire-roar", gain: 0.5, delay: 0.05, stopAt: 2.2 },
+        { name: "thunder-cinematic", gain: 0.6, delay: 0.08 },
+        { name: "motorcycle-rev", gain: 0.4, delay: 0.1, stopAt: 2.5 },
+        { name: "metal-sword", gain: 0.45, delay: 0.15 },
+        { name: "car-slam", gain: 0.4, delay: 0.18 },
+        { name: "electric-crackle1", gain: 0.4, delay: 0.2 },
+        { name: "bell-ding", gain: 0.35, delay: 0.28 },
+        { name: "bell2", gain: 0.32, delay: 0.36 },
+        { name: "bell3", gain: 0.32, delay: 0.44 },
+        { name: "metallic-click1", gain: 0.3, delay: 0.5 },
+        { name: "metallic-click2", gain: 0.3, delay: 0.58 },
+        { name: "war-boom2", gain: 0.5, delay: 0.32, stopAt: 2.0 },
+      ]);
+    } else if (size >= 10) {
+      layer([
+        { name: "movie-boom", gain: 0.6, stopAt: 1.6 },
+        { name: "thunder-cinematic", gain: 0.45, delay: 0.05 },
+        { name: "motorcycle2", gain: 0.35, delay: 0.1, stopAt: 1.8 },
+        { name: "bell-ding", gain: 0.4, delay: 0.02 },
+        { name: "bell2", gain: 0.35, delay: 0.12 },
+        { name: "metallic-click1", gain: 0.3, delay: 0.18 },
+        { name: "metallic-click2", gain: 0.3, delay: 0.24 },
+        { name: "crowd-cheer2", gain: 0.16, delay: 0.15, stopAt: 2.5 },
+      ]);
+    } else {
+      layer([
+        { name: "high-tech-bleep", gain: 0.5 },
+        { name: "electric-zap", gain: 0.5, delay: 0.03 },
+        { name: "bell3", gain: 0.4, delay: 0.05 },
+        { name: "metallic-click2", gain: 0.35, delay: 0.09 },
+        { name: "tones2", gain: 0.3, delay: 0.12 },
+      ]);
+    }
+  }
+
+  // New symbols dropping in after a cascade clears — a heavy SLAM, not a
+  // simple fall.
+  function cascadeSlam() {
+    layer([
+      { name: "stomp3", gain: 0.5 },
+      { name: "impact2", gain: 0.4, delay: 0.02 },
+    ]);
+  }
+
+  function multiplierHit(level) {
+    const lvl = level || 1;
+    if (lvl >= 25) {
+      layer([
+        { name: "war-boom2", gain: 0.9 },
+        { name: "cinematic-boom", gain: 0.7, delay: 0.05 },
+        { name: "cartoon-laugh", gain: 0.5, delay: 0.2 },
+        { name: "electric-crackle1", gain: 0.4, delay: 0.05 },
+      ]);
+    } else if (lvl >= 10) {
+      layer([
+        { name: "cinematic-boom", gain: 0.75 },
+        { name: "thunder-cinematic", gain: 0.5, delay: 0.05 },
+      ]);
+    } else if (lvl >= 5) {
+      play("thunder-cinematic", { gain: 0.55 });
+    } else {
+      play("electric-zap", { gain: 0.45 });
+    }
+  }
+
+  // Everything pauses: heartbeat... heartbeat... the jester laughs...
+  // lightning flashes... deep choir begins... then the screen explodes blue.
   function bonusTrigger() {
-    ensureCtx();
-    // A cinematic detonation announces the bonus before the fanfare hits.
-    explosion(14);
-    [0, 3, 6, 10, 12].forEach((semi, i) => {
-      setTimeout(() => {
-        tone(146.8 * Math.pow(2, semi / 12), 0.9, "sawtooth", 0.14, 0.05);
-      }, 120 + i * 150);
-    });
-    setTimeout(() => noiseBurst(1.2, 1200, 0.15, "bandpass"), 400);
+    layer([
+      { name: "heartbeat", gain: 0.5, rate: 0.85, delay: 0.0 },
+      { name: "heartbeat", gain: 0.5, rate: 0.85, delay: 0.55 },
+      { name: "cartoon-laugh", gain: 0.55, delay: 1.05 },
+      { name: "thunder-cinematic", gain: 0.5, delay: 1.15 },
+      { name: "brass-cinematic", gain: 0.4, delay: 1.35, stopAt: 2.2 },
+      { name: "voices1", gain: 0.3, delay: 1.4, stopAt: 2.2 },
+      { name: "war-boom2", gain: 0.8, delay: 1.9, stopAt: 2.4 },
+      { name: "electric-crackle1", gain: 0.4, delay: 1.95 },
+    ]);
   }
 
+  // Music stops, silence, heartbeat, the jester's laugh slowly builds,
+  // lightning crawls — then the full over-the-top payoff.
   function jackpot() {
     ensureCtx();
-    // Huge opening boom — the "screen shake" moment — before the
-    // triumphant fanfare rings out over the top.
-    explosion(28);
-    setTimeout(() => {
-      [0, 4, 7, 12, 16, 19, 24].forEach((semi, i) => {
-        setTimeout(() => pianoNote(261.6 * Math.pow(2, semi / 12), 0.26, 1.3), i * 100);
-      });
-    }, 140);
+    duckMusic(0.03, 0.3, 3600, 2.2);
+    layer([
+      { name: "heartbeat", gain: 0.55, rate: 0.8, delay: 0.0 },
+      { name: "heartbeat", gain: 0.55, rate: 0.8, delay: 0.6 },
+      { name: "heartbeat", gain: 0.55, rate: 0.8, delay: 1.2 },
+      { name: "cartoon-laugh", gain: 0.5, rate: 0.9, delay: 1.5 },
+      { name: "cartoon-laugh", gain: 0.6, rate: 1.05, delay: 2.2 },
+      { name: "thunder-cinematic", gain: 0.55, delay: 2.6 },
+      { name: "war-boom2", gain: 0.95, delay: 2.75 },
+      { name: "bell-ding", gain: 0.5, delay: 2.8 },
+      { name: "bell2", gain: 0.5, delay: 2.95 },
+      { name: "bell3", gain: 0.5, delay: 3.1 },
+      { name: "brass-cinematic", gain: 0.5, delay: 2.85, stopAt: 3.5 },
+      { name: "voices1", gain: 0.4, delay: 2.9, stopAt: 3.5 },
+      { name: "fire-roar", gain: 0.55, delay: 2.9, stopAt: 3.0 },
+      { name: "motorcycle-rev", gain: 0.45, delay: 3.0, stopAt: 2.2 },
+      { name: "motorcycle2", gain: 0.4, delay: 3.15, stopAt: 2.0 },
+      { name: "metallic-click1", gain: 0.35, delay: 3.05 },
+      { name: "metallic-click2", gain: 0.35, delay: 3.15 },
+      { name: "bell-ding", gain: 0.3, delay: 3.25 },
+      { name: "bell2", gain: 0.3, delay: 3.35 },
+      { name: "metal-sword", gain: 0.4, delay: 3.1 },
+      { name: "car-slam", gain: 0.4, delay: 3.15 },
+      { name: "thunder-bass", gain: 0.6, delay: 3.2, stopAt: 2.4 },
+    ]);
+    setTimeout(() => voiceLine("fortune_favors_the_fearless"), 4300);
+    setTimeout(() => voiceLine("whisper_again", { gain: 0.5 }), 5900);
   }
 
-  function scheduleAmbience() {
-    if (!ambienceRunning) return;
-    const freq = NOTE_SCALE[Math.floor(Math.random() * NOTE_SCALE.length)] / 2;
-    pianoNote(freq, 0.055, 3.5 + Math.random() * 1.5);
-    const nextIn = 2800 + Math.random() * 3200;
-    ambienceTimer = setTimeout(scheduleAmbience, nextIn);
+  // Sign In button press on the auth screens: electric whoosh, energy
+  // surge, dark bass hit.
+  function signInPress() {
+    layer([
+      { name: "electric-whoosh", gain: 0.6 },
+      { name: "electric-charge", gain: 0.35, delay: 0.05, stopAt: 1.2 },
+      { name: "bass-boom", gain: 0.55, delay: 0.08, stopAt: 1.4 },
+    ]);
   }
 
-  function startAmbience() {
-    if (ambienceRunning || realMusicEl) return;
-    ensureCtx();
-    ambienceRunning = true;
+  const ANTICIPATION_LINES = [
+    "spin_if_you_dare", "feeling_lucky", "lets_see_what_fate_decides",
+    "another_chance", "the_night_is_young", "the_house_trembles",
+  ];
 
-    ambienceGain = ctx.createGain();
-    ambienceGain.gain.value = 0;
-    ambienceGain.connect(masterGain);
-    ambienceGain.gain.linearRampToValueAtTime(muted ? 0 : 0.5, ctx.currentTime + 2);
-
-    droneOsc = ctx.createOscillator();
-    droneOsc.type = "sine";
-    droneOsc.frequency.value = 55; // low A
-    const droneGain = ctx.createGain();
-    droneGain.gain.value = 0.05;
-    droneOsc.connect(droneGain).connect(ambienceGain);
-    droneOsc.start();
-
-    scheduleAmbience();
+  function voiceLine(key, opts) {
+    playVoice(key, opts);
   }
 
-  function stopAmbience() {
-    ambienceRunning = false;
-    if (ambienceTimer) clearTimeout(ambienceTimer);
-    if (droneOsc) { try { droneOsc.stop(); } catch (e) {} }
-    droneOsc = null;
-  }
-
-  function tryLoadRealMusic() {
-    const el = document.createElement("audio");
-    el.src = "audio/bgm.mp3";
-    el.loop = true;
-    el.volume = muted ? 0 : 0.35;
-    el.addEventListener("canplaythrough", () => {
-      realMusicEl = el;
-      stopAmbience();
-      el.play().catch(() => {});
-    }, { once: true });
-    el.addEventListener("error", () => {
-      startAmbience();
-    }, { once: true });
+  function maybeVoiceLine(chance, key) {
+    if (Math.random() < chance) voiceLine(key || pick(ANTICIPATION_LINES));
   }
 
   function start() {
     ensureCtx();
-    if (!realMusicEl && !ambienceRunning) tryLoadRealMusic();
   }
 
   function setMuted(next) {
     muted = next;
-    if (masterGain) masterGain.gain.value = muted ? 0 : 0.9;
-    if (ambienceGain) ambienceGain.gain.value = muted ? 0 : 0.5;
-    if (realMusicEl) realMusicEl.volume = muted ? 0 : 0.35;
+    if (masterGain) masterGain.gain.value = muted ? 0 : 1;
   }
 
   function isMuted() { return muted; }
 
   return {
-    start, setMuted, isMuted,
-    spinStart, reelStop, winChime, explosion, bonusTrigger, jackpot,
+    start, setMuted, isMuted, enterScene,
+    spinStart, reelStop, winHit, cascadeSlam, multiplierHit,
+    bonusTrigger, jackpot, signInPress,
+    voiceLine, maybeVoiceLine,
+    play, layer,
   };
 })();

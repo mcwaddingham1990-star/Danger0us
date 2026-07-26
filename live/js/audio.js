@@ -374,6 +374,43 @@ const AudioManager = (() => {
   let currentMusicKey = null;
   const realMusicEls = {};
 
+  // Real tracks layered ON TOP of a scene's ambience (not swapped in via
+  // the override system above) — e.g. a real song playing alongside the
+  // drone/wind/thunder bed rather than replacing it. Keyed by filename
+  // (under live/audio/music/), each with its own gain node on musicBus
+  // so it still ducks correctly during jackpot/bonus moments.
+  const customTracks = {};
+
+  function startCustomTrack(filename, opts) {
+    opts = opts || {};
+    if (customTracks[filename]) return;
+    ensureCtx();
+    const el = new Audio(MUSIC_DIR + filename);
+    el.loop = true;
+    el.volume = 1;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(opts.gain != null ? opts.gain : 0.4, ctx.currentTime + (opts.fadeIn != null ? opts.fadeIn : 2.5));
+    try {
+      const src = ctx.createMediaElementSource(el);
+      src.connect(g).connect(musicBus);
+    } catch (e) {}
+    el.play().catch(() => {});
+    customTracks[filename] = { el, gain: g };
+  }
+
+  function stopCustomTrack(filename, fadeMs) {
+    const entry = customTracks[filename];
+    if (!entry) return;
+    delete customTracks[filename];
+    const now = ctx.currentTime;
+    const ms = fadeMs != null ? fadeMs : 1500;
+    entry.gain.gain.cancelScheduledValues(now);
+    entry.gain.gain.setValueAtTime(entry.gain.gain.value, now);
+    entry.gain.gain.linearRampToValueAtTime(0.0001, now + ms / 1000);
+    setTimeout(() => { try { entry.el.pause(); } catch (e) {} }, ms + 100);
+  }
+
   const PULSE_CONFIG = {
     main_theme: { pulseName: "thud", pulseMs: 600, pulseGain: 0.18, accentName: "battle-boom", accentAltName: "boom-battle2", accentMs: 4800, accentGain: 0.22 },
     free_spins_music: { pulseName: "thud", pulseMs: 430, pulseGain: 0.26, accentName: "boom-battle3", accentAltName: "war-boom", accentMs: 3200, accentGain: 0.3 },
@@ -734,6 +771,7 @@ const AudioManager = (() => {
     winHit, cascadeSlam, multiplierHit,
     bonusTrigger, jackpot, signInPress,
     enterBonusMusic, exitBonusMusic, playMusic, stopMusic,
+    startCustomTrack, stopCustomTrack,
     animateCountUp,
     voiceLine, jesterLine, maybeVoiceLine,
   };

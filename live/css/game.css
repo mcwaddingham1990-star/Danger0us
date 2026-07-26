@@ -58,19 +58,37 @@ html, body {
   right: 9.5%;
   top: 33.4375%;
   height: 39%;
-  display: grid;
+  display: flex;
+  flex-direction: row;
   gap: 1px;
   padding: 0.6%;
+  perspective: 480px;
+  perspective-origin: 50% 50%;
 }
 
+/*
+  Every reel column is a little 3D carousel: tiles sit on a virtual
+  cylinder (rotateX by a fixed --slot-angle around the shared X axis,
+  pushed out to the cylinder wall via translateZ). The column itself is
+  pushed back by that same radius so the front-facing tile renders at
+  natural scale instead of being magnified toward the camera. Spinning
+  is just animating the inherited --wheel-rotation custom property on
+  the column — every tile's rotateX(calc(...)) picks it up for free.
+*/
 .tile {
-  position: relative;
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: calc(50% - var(--row-h, 12.5%) / 2);
+  height: var(--row-h, 12.5%);
   overflow: hidden;
   border-radius: 3px;
   background-size: cover;
   background-position: center;
   box-shadow: 0 0 0 1px rgba(80, 140, 220, 0.25) inset;
   transition: box-shadow 0.2s ease;
+  transform: rotateX(calc(var(--slot-angle, 0deg) + var(--wheel-rotation, 0deg))) translateZ(var(--reel-radius, 0px));
+  backface-visibility: hidden;
 }
 
 .tile.winning {
@@ -89,37 +107,24 @@ html, body {
 }
 
 @keyframes dropIn {
-  from { transform: translateY(-120%); opacity: 0.2; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: rotateX(calc(var(--slot-angle, 0deg) - 55deg)) translateZ(var(--reel-radius, 0px)); opacity: 0.2; }
+  to   { transform: rotateX(var(--slot-angle, 0deg)) translateZ(var(--reel-radius, 0px)); opacity: 1; }
 }
 
-/* Realistic per-column spin reels */
+/* Each column is its own 3D carousel — see .tile comment above. */
 .reel-col {
   position: relative;
+  flex: 1 1 0;
   height: 100%;
   overflow: hidden;
-}
-
-.reel-strip {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  transform: translateY(0);
+  transform-style: preserve-3d;
+  transform: translateZ(calc(-1 * var(--reel-radius, 0px)));
   filter: blur(0);
   transition: filter 0.25s ease;
 }
 
-.reel-strip.spinning {
+.reel-col.spinning {
   filter: blur(5px) brightness(1.15);
-}
-
-.reel-strip-tile {
-  flex: 1 1 0;
-  min-height: 0;
-  margin: 0.5px 0;
 }
 
 .win-flash-layer {
@@ -422,6 +427,9 @@ html, body {
   right: 12%;
   top: 30%;
   height: 46%;
-  display: grid;
+  display: flex;
+  flex-direction: row;
   gap: 1px;
+  perspective: 480px;
+  perspective-origin: 50% 50%;
 }

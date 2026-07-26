@@ -42,47 +42,87 @@ if (player) {
     if (betVal) betVal.textContent = bet.toFixed(1);
   }
 
-  function setupGridContainer(container, c, r) {
-    container.style.display = "grid";
-    container.style.gridTemplateColumns = `repeat(${c}, 1fr)`;
-    container.style.gridTemplateRows = `repeat(${r}, 1fr)`;
+  /*
+    Reels sit on a virtual cylinder (see the .tile/.reel-col comment in
+    game.css) — each row occupies a fixed angular slot, spread evenly
+    across a total arc of CURVE_MAX_DEG*2 centered on the window.
+  */
+  const CURVE_MAX_DEG = 42;
+
+  function reelGeometry(r, windowHeightPx) {
+    const anglePerRow = (2 * CURVE_MAX_DEG) / r;
+    const anglePerRowRad = anglePerRow * Math.PI / 180;
+    const rowHeightPx = (windowHeightPx || 1) / r;
+    const radius = (rowHeightPx / 2) / Math.tan(anglePerRowRad / 2);
+    return { anglePerRow, radius };
+  }
+
+  // k=0 is the topmost row; k=r-1 is the bottommost. Works for k outside
+  // [0, r-1] too (filler rows further round the cylinder during a spin).
+  function slotAngleDeg(k, r, anglePerRow) {
+    return ((r - 1) / 2 - k) * anglePerRow;
+  }
+
+  function makeTile(symId, k, r, geo, rowHPercent, extraClass) {
+    const sym = symbolById(symId);
+    const tile = document.createElement("div");
+    tile.className = "tile" + (extraClass ? " " + extraClass : "");
+    if (sym) tile.style.backgroundImage = `url('${pickSymbolImage(sym)}')`;
+    tile.style.setProperty("--row-h", rowHPercent);
+    tile.style.setProperty("--slot-angle", slotAngleDeg(k, r, geo.anglePerRow).toFixed(3) + "deg");
+    return tile;
+  }
+
+  function setupGridContainer(container) {
+    container.style.display = "flex";
+    container.style.flexDirection = "row";
   }
 
   function renderGrid(container, grid, c, r, fallingCells) {
-    setupGridContainer(container, c, r);
+    setupGridContainer(container);
     container.innerHTML = "";
-    for (let ri = 0; ri < r; ri++) {
-      for (let ci = 0; ci < c; ci++) {
-        const sym = symbolById(grid[ri][ci]);
-        const tile = document.createElement("div");
-        tile.className = "tile";
+    const geo = reelGeometry(r, container.clientHeight);
+    const rowHPercent = (100 / r) + "%";
+
+    for (let ci = 0; ci < c; ci++) {
+      const col = document.createElement("div");
+      col.className = "reel-col";
+      col.style.setProperty("--reel-radius", geo.radius.toFixed(1) + "px");
+
+      for (let ri = 0; ri < r; ri++) {
+        const tile = makeTile(grid[ri][ci], ri, r, geo, rowHPercent, fallingCells ? "falling" : null);
         tile.dataset.r = ri;
         tile.dataset.c = ci;
-        if (sym) tile.style.backgroundImage = `url('${pickSymbolImage(sym)}')`;
-        if (fallingCells) tile.classList.add("falling");
-        container.appendChild(tile);
+        col.appendChild(tile);
       }
+      container.appendChild(col);
     }
   }
 
   function highlightCells(container, cells) {
+    const containerRect = container.getBoundingClientRect();
+
     cells.forEach(([r, c]) => {
       const tile = container.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
       if (!tile) return;
       tile.classList.add("winning");
 
-      // Appended to the reel-window, not the tile — .tile has
-      // overflow:hidden (for its background-image) which would clip a
-      // burst/sparks meant to spill outside the tile's own bounds.
-      const cx = tile.offsetLeft + tile.offsetWidth / 2;
-      const cy = tile.offsetTop + tile.offsetHeight / 2;
+      // Positioned from the tile's actual rendered (post-3D-transform)
+      // bounding box, not its pre-transform layout box — the curved
+      // reels mean those two are very different now. Appended to the
+      // reel-window, not the tile — .tile has overflow:hidden (for its
+      // background-image) which would clip a burst/sparks meant to
+      // spill outside the tile's own bounds.
+      const tileRect = tile.getBoundingClientRect();
+      const cx = tileRect.left - containerRect.left + tileRect.width / 2;
+      const cy = tileRect.top - containerRect.top + tileRect.height / 2;
 
       const boom = document.createElement("div");
       boom.className = "explosion";
       boom.style.left = cx + "px";
       boom.style.top = cy + "px";
-      boom.style.width = (tile.offsetWidth * 1.7) + "px";
-      boom.style.height = (tile.offsetHeight * 1.7) + "px";
+      boom.style.width = (tileRect.width * 1.7) + "px";
+      boom.style.height = (tileRect.height * 1.7) + "px";
       container.appendChild(boom);
       boom.addEventListener("animationend", () => boom.remove());
 
@@ -109,25 +149,50 @@ if (player) {
     container.classList.add("shaking");
   }
 
+  // Standard cubic-bezier timing-function evaluator (bisection on the
+  // x-curve to find t for a given elapsed-time fraction, then reads the
+  // y-curve) — lets the JS-driven spin reuse the exact same easing feel
+  // a CSS transition would have given the old translateY-based reels.
+  function cubicBezierEase(x1, y1, x2, y2) {
+    function bez(t, a, b) {
+      const it = 1 - t;
+      return 3 * it * it * t * a + 3 * it * t * t * b + t * t * t;
+    }
+    return function (t) {
+      let lo = 0, hi = 1, u = t;
+      for (let i = 0; i < 20; i++) {
+        const x = bez(u, x1, x2);
+        if (Math.abs(x - t) < 1e-4) break;
+        if (x < t) lo = u; else hi = u;
+        u = (lo + hi) / 2;
+      }
+      return bez(u, y1, y2);
+    };
+  }
+  const spinEase = cubicBezierEase(0.16, 0.85, 0.3, 1.12);
+
   /*
-    Realistic reel spin: each column is its own scrollable strip of filler
-    symbols followed by the real final column values. The strip animates
-    from "showing filler" to "showing the final rows", staggered left to
-    right so columns stop one after another, with a motion-blur while
-    moving fast that clears just before it settles.
+    Realistic reel spin: each column mounts a strip of filler symbols
+    followed by the real final column values as tiles on a shared
+    cylinder, then rotates the whole cylinder (one inherited CSS custom
+    property per column, per frame) until the final segment faces
+    forward. Staggered left to right so columns stop one after another,
+    with a motion-blur while moving fast that clears just before it
+    settles.
   */
   function spinReveal(container, c, r, finalGrid) {
     return new Promise((resolve) => {
       const extraRows = 34;
       const stripLen = extraRows + r;
 
-      container.style.display = "flex";
-      container.style.flexDirection = "row";
-      container.style.gridTemplateColumns = "";
-      container.style.gridTemplateRows = "";
+      setupGridContainer(container);
       container.innerHTML = "";
 
       DrAudio.reelStart();
+
+      const geo = reelGeometry(r, container.clientHeight);
+      const rowHPercent = (100 / r) + "%";
+      const startWheel = -(extraRows + (r - 1) / 2) * geo.anglePerRow;
 
       const perColDelay = 280;
       const baseDuration = 2500;
@@ -135,12 +200,9 @@ if (player) {
 
       for (let ci = 0; ci < c; ci++) {
         const col = document.createElement("div");
-        col.className = "reel-col";
-        col.style.width = (100 / c) + "%";
-
-        const strip = document.createElement("div");
-        strip.className = "reel-strip spinning";
-        strip.style.height = (stripLen / r * 100) + "%";
+        col.className = "reel-col spinning";
+        col.style.setProperty("--reel-radius", geo.radius.toFixed(1) + "px");
+        col.style.setProperty("--wheel-rotation", startWheel.toFixed(3) + "deg");
 
         for (let si = 0; si < stripLen; si++) {
           const isFinal = si >= extraRows;
@@ -148,27 +210,28 @@ if (player) {
           const symId = isFinal
             ? finalGrid[ri][ci]
             : SYMBOL_SET[Math.floor(Math.random() * SYMBOL_SET.length)].id;
-          const sym = symbolById(symId);
-          const tile = document.createElement("div");
-          tile.className = "tile reel-strip-tile";
-          if (sym) tile.style.backgroundImage = `url('${pickSymbolImage(sym)}')`;
-          strip.appendChild(tile);
+          col.appendChild(makeTile(symId, si - extraRows, r, geo, rowHPercent));
         }
 
-        col.appendChild(strip);
         container.appendChild(col);
 
-        const travel = ((stripLen - r) / stripLen) * 100;
         const delay = ci * perColDelay;
 
         setTimeout(() => {
-          strip.style.transition = `transform ${baseDuration}ms cubic-bezier(0.16, 0.85, 0.3, 1.12)`;
-          strip.style.transform = `translateY(-${travel}%)`;
+          const t0 = performance.now();
+          function frame(now) {
+            const t = Math.min(1, (now - t0) / baseDuration);
+            const eased = spinEase(t);
+            const wheel = startWheel + (0 - startWheel) * eased;
+            col.style.setProperty("--wheel-rotation", wheel.toFixed(3) + "deg");
+            if (t < 1) requestAnimationFrame(frame);
+          }
+          requestAnimationFrame(frame);
         }, 20 + delay);
 
         const isLastCol = ci === c - 1;
         setTimeout(() => {
-          strip.classList.remove("spinning");
+          col.classList.remove("spinning");
           DrAudio.reelStop(isLastCol);
         }, delay + baseDuration - 260);
 
@@ -393,7 +456,7 @@ if (player) {
   document.getElementById("btnPlayAgain").addEventListener("click", closeBonusEnd);
   document.getElementById("btnReturnToGame").addEventListener("click", closeBonusEnd);
 
-  setupGridContainer(reelWindow, cols(), rows());
+  setupGridContainer(reelWindow);
   refreshHud();
 
   if (player.role === "admin" && drIsPlayerViewActive()) {

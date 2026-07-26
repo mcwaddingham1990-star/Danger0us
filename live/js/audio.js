@@ -643,7 +643,20 @@ const AudioManager = (() => {
     }
   }
 
+  // Hard cooldowns on the two "big noise" moments — not just guarded
+  // against overlapping calls, but rate-limited outright. However often
+  // the game logic decides to award a bonus/jackpot (that's the admin's
+  // settings, untouched here), the loud fanfare itself can never fire
+  // more than once per cooldown window, so a generous chance setting
+  // can't turn this into a wall of noise on ordinary spins. Credits are
+  // still awarded normally — this only throttles the audio cue.
+  let lastBonusTriggerAt = 0;
+  const BONUS_AUDIO_COOLDOWN_MS = 20000;
+
   function bonusTrigger() {
+    const now = Date.now();
+    if (now - lastBonusTriggerAt < BONUS_AUDIO_COOLDOWN_MS) return;
+    lastBonusTriggerAt = now;
     layer([
       { key: "bonus_trigger", gain: 0.5 },
       { key: "heartbeat", gain: 0.5, rate: 0.85, delay: 0.55 },
@@ -654,15 +667,15 @@ const AudioManager = (() => {
     setTimeout(() => play("bonus_enter", { gain: 0.6 }), 2100);
   }
 
-  // Guarded against overlapping triggers — without this, two jackpot
-  // rolls landing close together (e.g. testing with jackpotChance turned
-  // up) would stack their full ~8s sequences on top of each other,
-  // which is what "nonstop jackpot ding" actually was.
   let jackpotActive = false;
+  let lastJackpotAt = 0;
+  const JACKPOT_AUDIO_COOLDOWN_MS = 60000;
 
   function jackpot() {
-    if (jackpotActive) return;
+    const now = Date.now();
+    if (jackpotActive || now - lastJackpotAt < JACKPOT_AUDIO_COOLDOWN_MS) return;
     jackpotActive = true;
+    lastJackpotAt = now;
     ensureCtx();
     duckMusic(0.03, 0.3, 3600, 2.2);
     layer([

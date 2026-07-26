@@ -64,6 +64,7 @@ html, body {
   padding: 0.6%;
   perspective: 480px;
   perspective-origin: 50% 50%;
+  overflow: hidden;
 }
 
 /*
@@ -111,20 +112,32 @@ html, body {
   to   { transform: rotateX(var(--slot-angle, 0deg)) translateZ(var(--reel-radius, 0px)); opacity: 1; }
 }
 
-/* Each column is its own 3D carousel — see .tile comment above. */
+/*
+  Each column is its own 3D carousel — see .tile comment above. The
+  carousel's 3D context (.reel-cyl) is kept on its own element with
+  nothing else on it: per spec, a non-visible overflow OR a filter that
+  isn't `none` (even blur(0)) silently forces transform-style back to
+  flat, which would break preserve-3d. So .reel-col (the flex item) owns
+  clipping + the spin blur, and .reel-cyl (its one child) owns the 3D.
+*/
 .reel-col {
   position: relative;
   flex: 1 1 0;
   height: 100%;
   overflow: hidden;
-  transform-style: preserve-3d;
-  transform: translateZ(calc(-1 * var(--reel-radius, 0px)));
-  filter: blur(0);
   transition: filter 0.25s ease;
 }
 
 .reel-col.spinning {
   filter: blur(5px) brightness(1.15);
+}
+
+.reel-cyl {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: translateZ(calc(-1 * var(--reel-radius, 0px)));
 }
 
 .win-flash-layer {
@@ -432,4 +445,5 @@ html, body {
   gap: 1px;
   perspective: 480px;
   perspective-origin: 50% 50%;
+  overflow: hidden;
 }

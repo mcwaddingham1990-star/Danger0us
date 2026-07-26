@@ -87,14 +87,18 @@ if (player) {
     for (let ci = 0; ci < c; ci++) {
       const col = document.createElement("div");
       col.className = "reel-col";
-      col.style.setProperty("--reel-radius", geo.radius.toFixed(1) + "px");
+
+      const cyl = document.createElement("div");
+      cyl.className = "reel-cyl";
+      cyl.style.setProperty("--reel-radius", geo.radius.toFixed(1) + "px");
 
       for (let ri = 0; ri < r; ri++) {
         const tile = makeTile(grid[ri][ci], ri, r, geo, rowHPercent, fallingCells ? "falling" : null);
         tile.dataset.r = ri;
         tile.dataset.c = ci;
-        col.appendChild(tile);
+        cyl.appendChild(tile);
       }
+      col.appendChild(cyl);
       container.appendChild(col);
     }
   }
@@ -201,8 +205,11 @@ if (player) {
       for (let ci = 0; ci < c; ci++) {
         const col = document.createElement("div");
         col.className = "reel-col spinning";
-        col.style.setProperty("--reel-radius", geo.radius.toFixed(1) + "px");
-        col.style.setProperty("--wheel-rotation", startWheel.toFixed(3) + "deg");
+
+        const cyl = document.createElement("div");
+        cyl.className = "reel-cyl";
+        cyl.style.setProperty("--reel-radius", geo.radius.toFixed(1) + "px");
+        cyl.style.setProperty("--wheel-rotation", startWheel.toFixed(3) + "deg");
 
         for (let si = 0; si < stripLen; si++) {
           const isFinal = si >= extraRows;
@@ -210,9 +217,10 @@ if (player) {
           const symId = isFinal
             ? finalGrid[ri][ci]
             : SYMBOL_SET[Math.floor(Math.random() * SYMBOL_SET.length)].id;
-          col.appendChild(makeTile(symId, si - extraRows, r, geo, rowHPercent));
+          cyl.appendChild(makeTile(symId, si - extraRows, r, geo, rowHPercent));
         }
 
+        col.appendChild(cyl);
         container.appendChild(col);
 
         const delay = ci * perColDelay;
@@ -223,7 +231,7 @@ if (player) {
             const t = Math.min(1, (now - t0) / baseDuration);
             const eased = spinEase(t);
             const wheel = startWheel + (0 - startWheel) * eased;
-            col.style.setProperty("--wheel-rotation", wheel.toFixed(3) + "deg");
+            cyl.style.setProperty("--wheel-rotation", wheel.toFixed(3) + "deg");
             if (t < 1) requestAnimationFrame(frame);
           }
           requestAnimationFrame(frame);

@@ -61,15 +61,15 @@ const AudioManager = (() => {
     reel_stop: { pool: ["slotclack1", "slotclack2", "stomp2", "impact1"] },
     reel_stop_final: { pool: ["stomp1", "impact2", "impact-loud"] },
 
-    // ---- Symbol landings (true placeholders — no per-symbol-type SFX
-    // exists in either sound list; wired and ready for real files) ----
-    symbol_land_common: { pool: [] },
-    symbol_land_premium: { pool: [] },
-    money_land: { pool: [] },
-    watch_land: { pool: [] },
-    girl_land: { pool: [] },
-    motorcycle_land: { pool: [] },
-    letter_land: { pool: [] },
+    // ---- Rare symbol landings — only the red tier and the jester wild
+    // get a sound; silver/blue (the common majority of the board) land
+    // silently so the board isn't chattering on every settle. ----
+    jester_land: { pool: ["magic1", "magic7"] },
+    red_moto_land: { pool: ["motorcycle2"] },
+    red_lady_land: { pool: ["magic3", "high-tech-bleep"] },
+    red_cash_land: { pool: ["coin4", "coin9", "coin15"] },
+    red_watch_land: { pool: ["tick2", "bell3"] },
+    red_letter_land: { pool: ["swish2", "click-sharp"] },
 
     // ---- Win tiers ----
     small_win: { pool: ["high-tech-bleep", "electric-zap", "bell3", "metallic-click2", "tones2"], composite: true },
@@ -550,25 +550,15 @@ const AudioManager = (() => {
 
   function clickSound() { play("click", { gain: 0.6 }); }
 
+  // One clean sound per moment — the button press and the reel engaging
+  // are two distinct beats, but each is a single sound, not a stack.
   function spinButtonPress() {
-    layer([
-      { key: "click", gain: 0.9 },
-      { key: "click_tech", gain: 0.5, delay: 0.04 },
-      { key: "electric_small", gain: 0.45, delay: 0.09 },
-    ]);
+    play("click", { gain: 0.8 });
   }
 
   function reelStart() {
-    layer([
-      { key: "click", gain: 0.85 },
-      { key: "electric_small", gain: 0.5, delay: 0.04 },
-      { key: "explosion_small", gain: 0.55, delay: 0.1 },
-      { key: "reel_start", gain: 0.5, delay: 0.2 },
-      { key: "reel_start", gain: 0.4, delay: 0.35 },
-      { key: "metal_rattle", gain: 0.35, delay: 0.4 },
-      { key: "electric_large", gain: 0.4, delay: 0.55 },
-    ]);
-    play("reel_loop", { gain: 0.35, delay: 0.8, stopAt: 3.0 });
+    play("reel_start", { gain: 0.6 });
+    play("reel_loop", { gain: 0.3, delay: 0.4, stopAt: 3.0 });
   }
 
   function reelStop(isLast) {
@@ -585,60 +575,46 @@ const AudioManager = (() => {
   }
 
   const LANDING_RULES = [
-    [/moto/, ["motorcycle_land", "symbol_land_premium"]],
-    [/lady/, ["girl_land", "symbol_land_premium"]],
-    [/cash/, ["money_land", "symbol_land_premium"]],
-    [/watch/, ["watch_land", "symbol_land_premium"]],
-    [/letter/, ["letter_land", "symbol_land_common"]],
-    [/jester/, ["symbol_land_premium"]],
+    [/^jester$/, "jester_land"],
+    [/^red-moto/, "red_moto_land"],
+    [/^red-lady/, "red_lady_land"],
+    [/^red-cash/, "red_cash_land"],
+    [/^red-watch/, "red_watch_land"],
+    [/^red-letter/, "red_letter_land"],
   ];
 
-  // Fires the appropriate (currently silent placeholder) landing sound
-  // for each distinct symbol type on a settled grid — ready to light up
-  // the moment symbol_land_*.mp3 files are dropped in.
+  // Only the rare (red tier + jester wild) symbols get a landing sound —
+  // one distinct sound per rare symbol type. Silver/blue symbols, which
+  // make up most of the board every spin, land silently.
   function symbolsLanded(symbolIds) {
     const seen = new Set();
     (symbolIds || []).forEach((id) => {
       const rule = LANDING_RULES.find(([re]) => re.test(id));
-      const keys = rule ? rule[1] : ["symbol_land_common"];
-      keys.forEach((k) => {
-        if (seen.has(k)) return;
-        seen.add(k);
-        play(k, { gain: 0.5 });
-      });
+      if (!rule) return;
+      const key = rule[1];
+      if (seen.has(key)) return;
+      seen.add(key);
+      play(key, { gain: 0.45, stopAt: 0.7 });
     });
   }
 
-  function winHit(clusterSize) {
+  // One sound per win, picked from a small pool per tier (so back-to-back
+  // wins of the same size don't sound identical) instead of a pile of
+  // layered effects. comboIndex is how many cascades have already
+  // chained this spin — each successive hit builds a little louder and
+  // brighter so a long combo streak actually feels like it's escalating.
+  function winHit(clusterSize, comboIndex) {
     const size = clusterSize || 0;
-    if (size >= 25) {
-      layer([
-        { key: "huge_win", gain: 0.85 },
-        { key: "explosion_large", gain: 0.8, delay: 0.02 },
-        { key: "fire_burst", gain: 0.5, delay: 0.05, stopAt: 2.2 },
-        { key: "glass_break", gain: 0.4, delay: 0.15 },
-        { key: "coin_explosion", gain: 0.45, delay: 0.2 },
-        { key: "coin_explosion", gain: 0.4, delay: 0.32 },
-        { key: "coin_explosion", gain: 0.35, delay: 0.44 },
-      ]);
-    } else if (size >= 15) {
-      layer([
-        { key: "big_win", gain: 0.7 },
-        { key: "explosion_medium", gain: 0.6, delay: 0.03 },
-        { key: "coin_shower", gain: 0.4, delay: 0.15 },
-        { key: "coin_shower", gain: 0.35, delay: 0.28 },
-      ]);
-    } else if (size >= 10) {
-      layer([
-        { key: "medium_win", gain: 0.6 },
-        { key: "coin_drop", gain: 0.4, delay: 0.15 },
-        { key: "coin_drop", gain: 0.35, delay: 0.28 },
-      ]);
-    } else {
-      layer([
-        { key: "small_win", gain: 0.55 },
-        { key: "coin_drop", gain: 0.35, delay: 0.08 },
-      ]);
+    const build = Math.min((comboIndex || 0) * 0.06, 0.35);
+    let tierKey;
+    if (size >= 25) tierKey = "huge_win";
+    else if (size >= 15) tierKey = "big_win";
+    else if (size >= 10) tierKey = "medium_win";
+    else tierKey = "small_win";
+
+    play(tierKey, { gain: 0.55 + build * 0.5, rate: 1 + build * 0.25 });
+    if ((comboIndex || 0) >= 2) {
+      play("electric_small", { gain: 0.2 + build, rate: 1 + build * 0.5, delay: 0.05 });
     }
   }
 
@@ -673,30 +649,34 @@ const AudioManager = (() => {
     setTimeout(() => play("bonus_enter", { gain: 0.6 }), 2100);
   }
 
+  // Guarded against overlapping triggers — without this, two jackpot
+  // rolls landing close together (e.g. testing with jackpotChance turned
+  // up) would stack their full ~8s sequences on top of each other,
+  // which is what "nonstop jackpot ding" actually was.
+  let jackpotActive = false;
+
   function jackpot() {
+    if (jackpotActive) return;
+    jackpotActive = true;
     ensureCtx();
     duckMusic(0.03, 0.3, 3600, 2.2);
     layer([
       { key: "jackpot_intro", gain: 0.55, rate: 0.8 },
-      { key: "jackpot_intro", gain: 0.55, rate: 0.8, delay: 0.6 },
-      { key: "jackpot_intro", gain: 0.55, rate: 0.8, delay: 1.2 },
-      { key: "evil_laugh", gain: 0.5, rate: 0.9, delay: 1.5 },
-      { key: "evil_laugh", gain: 0.6, rate: 1.05, delay: 2.2 },
+      { key: "jackpot_intro", gain: 0.55, rate: 0.8, delay: 0.7 },
+      { key: "evil_laugh", gain: 0.55, rate: 0.95, delay: 1.6 },
     ]);
-    const loopToken = startLoop("jackpot_loop", { gain: 0.25, bus: sfxBus, fadeIn: 0.3 });
+    const loopToken = startLoop("jackpot_loop", { gain: 0.22, bus: sfxBus, fadeIn: 0.3 });
     setTimeout(() => {
       stopLoop(loopToken, 0.2);
       layer([
         { key: "jackpot_finish", gain: 0.95 },
-        { key: "jackpot_finish", gain: 0.5, delay: 0.15 },
-        { key: "jackpot_finish", gain: 0.5, delay: 0.3 },
-        { key: "coin_explosion", gain: 0.5, delay: 0.35 },
-        { key: "coin_explosion", gain: 0.45, delay: 0.5 },
-        { key: "glass_break", gain: 0.4, delay: 0.4 },
+        { key: "jackpot_finish", gain: 0.45, delay: 0.2 },
+        { key: "coin_explosion", gain: 0.45, delay: 0.35 },
       ]);
     }, 2600);
-    setTimeout(() => voiceLine("fortune_favors_the_fearless"), 6900);
-    setTimeout(() => voiceLine("whisper_again", { gain: 0.5 }), 8500);
+    setTimeout(() => voiceLine("fortune_favors_the_fearless"), 5200);
+    setTimeout(() => voiceLine("whisper_again", { gain: 0.5 }), 6800);
+    setTimeout(() => { jackpotActive = false; }, 8000);
   }
 
   function signInPress() {

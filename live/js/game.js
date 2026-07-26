@@ -260,7 +260,7 @@ if (player) {
       const step = result.steps[i];
       const cells = step.removedCells.map((k) => k.split(",").map(Number));
       highlightCells(container, cells);
-      DrAudio.winHit(cells.length);
+      DrAudio.winHit(cells.length, i - 1);
       const stepWin = roundBet((step.stepMultiplierUnits || 0) * bet);
       if (stepWin > 0) showWinFlash("+" + stepWin.toFixed(1) + " CREDITS", "cascade");
       await sleep(480);

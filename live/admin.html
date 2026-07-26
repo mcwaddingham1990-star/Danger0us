@@ -46,6 +46,7 @@
       <input type="range" id="clusterMin" min="3" max="10" value="5">
     </div>
 
+    <button class="btn-secondary" id="viewAsPlayerBtn" style="margin-top: 10px;">View as Player</button>
     <button class="btn-secondary" id="signOutBtn" style="margin-top: 10px;">Sign Out</button>
   </div>
 </div>
@@ -73,7 +74,7 @@
     const [allPlayers, allRedemptions, globalSettings] = await Promise.all([
       drGetPlayers(), drGetRedemptions(), drGetSettings(),
     ]);
-    const players = allPlayers.filter((p) => p.role !== "admin");
+    const players = allPlayers;
 
     if (players.length === 0) {
       list.innerHTML = '<div class="player-row">No players yet.</div>';
@@ -115,6 +116,7 @@
         <div class="player-row" data-uid="${p.id}">
           <div class="email">
             ${p.email}
+            ${p.role === "admin" ? '<span class="approval-badge approved">You (Admin)</span>' : ""}
             <span class="approval-badge ${approved ? "approved" : "pending"}">${approved ? "Approved" : "Pending"}</span>
           </div>
           <div class="mini-stats">
@@ -285,6 +287,11 @@
   document.getElementById("signOutBtn").addEventListener("click", async () => {
     await drClearSession();
     window.location.href = "signin.html";
+  });
+
+  document.getElementById("viewAsPlayerBtn").addEventListener("click", () => {
+    drEnterPlayerView();
+    window.location.href = "dashboard.html";
   });
 
   startTicker(document.getElementById("tickerBar"));

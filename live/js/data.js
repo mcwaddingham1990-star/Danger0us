@@ -69,6 +69,20 @@ async function drClearSession() {
   await drAuth.signOut();
 }
 
+/*
+  "View as player" mode — lets the admin account browse the site as a
+  regular player would, without permanently changing anything about the
+  account. Purely a client-side UI flag (sessionStorage, so it clears
+  itself when the tab closes); it never grants any access on its own —
+  every page that honors it still re-checks player.role === "admin" from
+  Firestore before showing anything admin-only, so it can't be used by a
+  non-admin account to see admin UI.
+*/
+const DR_VIEW_AS_PLAYER_KEY = "drViewAsPlayer";
+function drEnterPlayerView() { sessionStorage.setItem(DR_VIEW_AS_PLAYER_KEY, "1"); }
+function drExitPlayerView() { sessionStorage.removeItem(DR_VIEW_AS_PLAYER_KEY); }
+function drIsPlayerViewActive() { return sessionStorage.getItem(DR_VIEW_AS_PLAYER_KEY) === "1"; }
+
 function drPlayerFromDoc(doc) {
   if (!doc.exists) return null;
   return Object.assign({ id: doc.id }, doc.data());

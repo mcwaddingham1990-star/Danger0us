@@ -326,16 +326,20 @@ const AudioManager = (() => {
     },
     lobby: {
       loops: [
-        { key: "drone", gain: 0.25 },
-        { key: "wind", gain: 0.15 },
+        { key: "drone", gain: 0.28 },
+        { key: "wind", gain: 0.16 },
       ],
       periodic: [
-        () => schedulePeriodic(() => play("thunder", { gain: 0.32, bus: ambBus }), 18000, 34000),
-        () => schedulePeriodic(() => play("reel_start", { gain: 0.3, bus: ambBus }), 9000, 16000),
-        () => schedulePeriodic(() => play("multiplier_x5", { gain: 0.28, bus: ambBus, stopAt: 2.2 }), 22000, 40000),
-        () => schedulePeriodic(() => play("electric_small", { gain: 0.2, bus: ambBus }), 10000, 18000),
+        () => schedulePeriodic(() => play("thunder", { gain: 0.5, bus: ambBus }), 25000, 55000),
+        () => schedulePeriodic(() => play("raven", { gain: 0.3, bus: ambBus }), 30000, 60000),
+        () => schedulePeriodic(() => play("metal_rattle", { gain: 0.28, bus: ambBus }), 24000, 45000),
+        () => schedulePeriodic(() => play("horror_stinger", { gain: 0.16, bus: ambBus, stopAt: 2.5 }), 50000, 100000),
+        () => schedulePeriodic(() => play("heartbeat", { gain: 0.35, rate: 0.9, bus: ambBus }), 45000, 90000),
       ],
-      music: "main_theme",
+      // No generative pulse bed — matches the sign-in screen for now.
+      // Drop a real track at live/audio/music/lobby_theme.mp3 and it
+      // takes over automatically, no code changes needed.
+      music: "lobby_theme",
     },
     game: {
       loops: [

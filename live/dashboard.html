@@ -77,6 +77,7 @@
     </div>
 
     <button class="btn-primary" id="goToGamesBtn">GO TO GAMES</button>
+    <button class="btn-secondary" id="returnToAdminBtn" style="display:none;">Return to Admin</button>
     <button class="btn-secondary" id="signOutBtn">Sign Out</button>
   </div>
 </div>
@@ -153,9 +154,13 @@
     const player = await drCurrentPlayer();
     if (!player) return;
 
-    if (player.role === "admin") {
+    if (player.role === "admin" && !drIsPlayerViewActive()) {
       window.location.href = "admin.html";
       return;
+    }
+
+    if (player.role === "admin" && drIsPlayerViewActive()) {
+      document.getElementById("returnToAdminBtn").style.display = "block";
     }
 
     currentPlayer = player;
@@ -218,8 +223,14 @@
   });
 
   document.getElementById("signOutBtn").addEventListener("click", async () => {
+    drExitPlayerView();
     await drClearSession();
     window.location.href = "signin.html";
+  });
+
+  document.getElementById("returnToAdminBtn").addEventListener("click", () => {
+    drExitPlayerView();
+    window.location.href = "admin.html";
   });
 
   const modal = document.getElementById("gamesModal");

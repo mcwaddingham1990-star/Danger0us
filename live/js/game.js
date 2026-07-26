@@ -396,6 +396,12 @@ if (player) {
   setupGridContainer(reelWindow, cols(), rows());
   refreshHud();
 
+  if (player.role === "admin" && drIsPlayerViewActive()) {
+    const returnLink = document.getElementById("returnToAdminLink");
+    returnLink.style.display = "inline";
+    returnLink.addEventListener("click", () => drExitPlayerView());
+  }
+
   let lastTimeSave = Date.now();
   function saveTimePlaying() {
     const now = Date.now();

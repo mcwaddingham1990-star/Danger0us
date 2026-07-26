@@ -530,7 +530,11 @@ const AudioManager = (() => {
     currentSceneName = name;
     activeLoopTokens = (scene.loops || []).map((l) => startLoop(l.key, { gain: l.gain, bus: ambBus, fadeIn: 2 }));
     activeTimerCancels = (scene.periodic || []).map((fn) => fn());
+    // A scene with no music key must still stop whatever music/pulse the
+    // previous scene left running (e.g. leaving "bonus" for "game") —
+    // playMusic() is only reached below when the new scene declares one.
     if (scene.music) playMusic(scene.music);
+    else if (currentMusicKey) stopMusic(800);
   }
 
   function exitScene() {
@@ -613,6 +617,7 @@ const AudioManager = (() => {
     else tierKey = "small_win";
 
     play(tierKey, { gain: 0.55 + build * 0.5, rate: 1 + build * 0.25 });
+    play("coin_drop", { gain: 0.35, delay: 0.07 }); // the "cha-ching" confirming points won
     if ((comboIndex || 0) >= 2) {
       play("electric_small", { gain: 0.2 + build, rate: 1 + build * 0.5, delay: 0.05 });
     }

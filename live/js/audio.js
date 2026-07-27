@@ -49,7 +49,6 @@ const AudioManager = (() => {
     thunder: { pool: ["thunder1", "thunder2", "thunder-rumble", "thunder-cinematic", "thunder-bass"] },
     raven: { pool: ["crow-caw", "bird-raven-caw"] },
     metal_rattle: { pool: ["metal-rattle"] },
-    horror_stinger: { pool: ["horror1", "horror2", "horror3", "horror4", "horror5", "horror6", "horror7", "horror8", "horror9", "horror10", "horror11", "horror12", "horror13", "horror14", "horror15"] },
     heartbeat: { pool: ["heartbeat"] },
 
     // ---- Sign-in button press ----
@@ -90,7 +89,6 @@ const AudioManager = (() => {
     electric_small: { pool: ["electric-crackle1", "electric-crackle2", "electric-zap"] },
 
     // ---- Explosions — reserved for bonus/jackpot, never per-win ----
-    explosion_small: { pool: ["impact-loud", "battle-boom"] },
     explosion_medium: { pool: ["movie-boom", "boom-battle2"] },
     explosion_large: { pool: ["cinematic-boom", "war-boom2", "boom-cinematic2"] },
 
@@ -323,7 +321,6 @@ const AudioManager = (() => {
         () => schedulePeriodic(() => play("thunder", { gain: 0.5, bus: ambBus }), 25000, 55000),
         () => schedulePeriodic(() => play("raven", { gain: 0.3, bus: ambBus }), 30000, 60000),
         () => schedulePeriodic(() => play("metal_rattle", { gain: 0.28, bus: ambBus }), 24000, 45000),
-        () => schedulePeriodic(() => play("horror_stinger", { gain: 0.16, bus: ambBus, stopAt: 2.5 }), 50000, 100000),
         () => schedulePeriodic(() => play("heartbeat", { gain: 0.35, rate: 0.9, bus: ambBus }), 45000, 90000),
       ],
     },
@@ -336,7 +333,6 @@ const AudioManager = (() => {
         () => schedulePeriodic(() => play("thunder", { gain: 0.5, bus: ambBus }), 25000, 55000),
         () => schedulePeriodic(() => play("raven", { gain: 0.3, bus: ambBus }), 30000, 60000),
         () => schedulePeriodic(() => play("metal_rattle", { gain: 0.28, bus: ambBus }), 24000, 45000),
-        () => schedulePeriodic(() => play("horror_stinger", { gain: 0.16, bus: ambBus, stopAt: 2.5 }), 50000, 100000),
         () => schedulePeriodic(() => play("heartbeat", { gain: 0.35, rate: 0.9, bus: ambBus }), 45000, 90000),
       ],
       // No generative pulse bed — matches the sign-in screen for now.
@@ -482,7 +478,6 @@ const AudioManager = (() => {
     layer([
       { key: "electric_large", gain: 0.6 },
       { key: "electric_arc", gain: 0.35, delay: 0.05, stopAt: 1.2 },
-      { key: "explosion_small", gain: 0.55, delay: 0.08, stopAt: 1.4 },
     ]);
   }
 

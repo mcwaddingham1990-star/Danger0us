@@ -192,8 +192,6 @@ if (player) {
       setupGridContainer(container);
       container.innerHTML = "";
 
-      DrAudio.reelStart();
-
       const geo = reelGeometry(r, container.clientHeight);
       const rowHPercent = (100 / r) + "%";
       const startWheel = -(extraRows + (r - 1) / 2) * geo.anglePerRow;
@@ -237,17 +235,14 @@ if (player) {
           requestAnimationFrame(frame);
         }, 20 + delay);
 
-        const isLastCol = ci === c - 1;
         setTimeout(() => {
           col.classList.remove("spinning");
-          DrAudio.reelStop(isLastCol);
         }, delay + baseDuration - 260);
 
         setTimeout(() => {
           remaining--;
           if (remaining === 0) {
             renderGrid(container, finalGrid, c, r, false);
-            DrAudio.symbolsLanded(finalGrid.flat());
             resolve();
           }
         }, delay + baseDuration + 100);
@@ -260,12 +255,10 @@ if (player) {
       const step = result.steps[i];
       const cells = step.removedCells.map((k) => k.split(",").map(Number));
       highlightCells(container, cells);
-      DrAudio.winHit(cells.length, i - 1);
       const stepWin = roundBet((step.stepMultiplierUnits || 0) * bet);
       if (stepWin > 0) showWinFlash("+" + stepWin.toFixed(1) + " CREDITS", "cascade");
       await sleep(480);
       renderGrid(container, step.grid, c, r, true);
-      DrAudio.cascadeSlam();
       await sleep(300);
     }
   }
@@ -284,7 +277,6 @@ if (player) {
       player.creditsWon = (player.creditsWon || 0) + 2500;
       drUpsertPlayer(player).catch(console.error);
       refreshHud();
-      DrAudio.jackpot();
       showWinFlash("MEGA JACKPOT! +2500", "jackpot");
       await sleep(2600);
       return true;
@@ -296,9 +288,6 @@ if (player) {
     document.getElementById("jesterCountText").textContent = jesterCountInitial;
     document.getElementById("freeSpinsAwarded").textContent = freeSpinsAwarded;
     document.getElementById("bonusAnnounce").classList.add("show");
-    DrAudio.bonusTrigger();
-    DrAudio.enterScene("bonus");
-    DrAudio.maybeVoiceLine(0.3);
     await sleep(2200);
     document.getElementById("bonusAnnounce").classList.remove("show");
 
@@ -333,7 +322,6 @@ if (player) {
       if (result.highestMultiplierUsed > highestMult) {
         highestMult = result.highestMultiplierUsed;
         showWinFlash(highestMult + "X MULTIPLIER!", "bonus");
-        DrAudio.multiplierHit(highestMult);
       }
       biggestCascadeOverall = Math.max(biggestCascadeOverall, result.biggestCluster);
 
@@ -342,7 +330,6 @@ if (player) {
       if (runningCascadeCount >= 100) jackpotHit = true;
       if (Math.random() * 100 < (settings.jackpotChance || 0)) jackpotHit = true;
       if (jackpotHit && !wasJackpot) {
-        DrAudio.jackpot();
         showWinFlash("JACKPOT +2500!", "jackpot");
         await sleep(2600);
       }
@@ -361,7 +348,6 @@ if (player) {
     refreshHud();
 
     bonusPlayEl.classList.remove("show");
-    DrAudio.enterScene("game");
 
     document.getElementById("endTotalWin").textContent = formatCredits(bonusWinTotal);
     document.getElementById("endBiggestCascade").textContent = biggestCascadeOverall;
@@ -397,7 +383,7 @@ if (player) {
     const winAmount = roundBet(result.totalMultiplierUnits * bet);
     settleStats(bet, winAmount);
     const prevWin = parseFloat(document.getElementById("hudWin").textContent) || 0;
-    DrAudio.animateCountUp(document.getElementById("hudWin"), prevWin, winAmount, 700, "win_count");
+    DrAudio.animateCountUp(document.getElementById("hudWin"), prevWin, winAmount, 700);
     refreshHud();
 
     await maybeInstantJackpot(settings);
@@ -411,15 +397,9 @@ if (player) {
     document.getElementById("btnSpinFloat").classList.remove("disabled");
   }
 
-  document.querySelectorAll(".ctrl-btn, .stepper-btn").forEach((btn) => {
-    btn.addEventListener("mouseenter", () => DrAudio.hoverSound());
-  });
-
   document.getElementById("btnSpinFloat").addEventListener("click", () => {
     DrAudio.start();
     DrAudio.enterScene("game");
-    DrAudio.spinButtonPress();
-    DrAudio.maybeVoiceLine(0.1);
     playSpin();
   });
 
@@ -427,7 +407,6 @@ if (player) {
   muteBtn.addEventListener("click", () => {
     DrAudio.start();
     DrAudio.enterScene("game");
-    DrAudio.clickSound();
     const next = !DrAudio.isMuted();
     DrAudio.setMuted(next);
     muteBtn.textContent = next ? "🔇" : "🔊";
@@ -435,28 +414,24 @@ if (player) {
 
   document.getElementById("btnMinBetFloat").addEventListener("click", () => {
     if (isSpinning) return;
-    DrAudio.clickSound();
     bet = MIN_BET;
     refreshHud();
   });
 
   document.getElementById("btnBetDownFloat").addEventListener("click", () => {
     if (isSpinning) return;
-    DrAudio.clickSound();
     bet = Math.max(MIN_BET, roundBet(bet - BET_STEP));
     refreshHud();
   });
 
   document.getElementById("btnBetUpFloat").addEventListener("click", () => {
     if (isSpinning) return;
-    DrAudio.clickSound();
     bet = Math.min(MAX_BET, roundBet(bet + BET_STEP));
     refreshHud();
   });
 
   document.getElementById("btnMaxBetFloat").addEventListener("click", () => {
     if (isSpinning) return;
-    DrAudio.clickSound();
     bet = MAX_BET;
     refreshHud();
   });

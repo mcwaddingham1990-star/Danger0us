@@ -174,7 +174,15 @@ if (player) {
       DrAudio.reelStart();
 
       const geo = reelGeometry(r, container.clientHeight);
-      const rowHPercent = (100 / r) + "%";
+      // Hard safety margin while the strip is actively rotating: shrink
+      // the tile a bit and space the cylinder's rows further apart than
+      // the "exact fit" trig gives. Perspective foreshortening and
+      // per-browser 3D-transform rendering differences meant tiles
+      // could still visually overlap while moving even with exact-fit
+      // math — this trades a hairline gap during motion for tiles that
+      // genuinely cannot touch. Same fix as Blue Diamonds' game.js.
+      geo.radius *= 1.3;
+      const rowHPercent = ((100 / r) * 0.9) + "%";
       const startWheel = -(extraRows + (r - 1) / 2) * geo.anglePerRow;
 
       const perColDelay = 280;

@@ -83,16 +83,29 @@ if (player) {
     container.style.flexDirection = "row";
   }
 
+  // Hard safety margin for any tile that's actively rotating (the spin
+  // strip, and falling/cascade tiles via their 55deg dropIn sweep):
+  // shrink the tile itself a bit AND space the cylinder's rows further
+  // apart (bigger radius than the "exact fit" trig would give). Between
+  // perspective foreshortening and per-browser 3D-transform rendering
+  // differences, the exact-fit math hasn't reliably kept adjacent tiles
+  // from visually touching while moving — this trades a hairline gap
+  // during motion for tiles that genuinely cannot overlap. Only applies
+  // while rotating; the settled grid is untouched.
+  const ROTATING_SIZE_SAFETY = 0.9;
+  const ROTATING_RADIUS_SAFETY = 1.3;
+
   function renderGrid(container, grid, c, r, fallingCells) {
     setupGridContainer(container);
     container.innerHTML = "";
     const geo = reelGeometry(r, container.clientHeight);
+    if (fallingCells) geo.radius *= ROTATING_RADIUS_SAFETY;
     // Falling tiles rotate through a 55deg sweep (see .tile.falling's
     // dropIn animation) — same reason the spin strip can't use the size
     // boost: oversized tiles mid-rotation visually overlap their
     // neighbors. Only tiles that are NOT actively animating (the settled
     // grid) get the larger size.
-    const rowHPercent = (fallingCells ? (100 / r) : ((100 / r) * TILE_SIZE_BOOST)) + "%";
+    const rowHPercent = (fallingCells ? (100 / r) * ROTATING_SIZE_SAFETY : ((100 / r) * TILE_SIZE_BOOST)) + "%";
 
     for (let ci = 0; ci < c; ci++) {
       const col = document.createElement("div");
@@ -262,13 +275,14 @@ if (player) {
       DrAudio.reelStart();
 
       const geo = reelGeometry(r, container.clientHeight);
-      // Unboosted here on purpose: the cylinder radius is derived from
-      // each row's real (unboosted) angular slot, so oversizing tiles
-      // while a whole packed strip is rotating makes neighboring tiles'
-      // enlarged edges visually overlap mid-spin — two symbols blending
-      // into one square until it settles. The boost only applies once
-      // the reel is static (see renderGrid).
-      const rowHPercent = (100 / r) + "%";
+      geo.radius *= ROTATING_RADIUS_SAFETY;
+      // Unboosted (and shrunk further, see ROTATING_SIZE_SAFETY) on
+      // purpose — the boost only applies once the reel is fully static
+      // (see renderGrid). Even at natural size, tiles packed on a
+      // rotating strip can visually overlap their neighbors depending
+      // on how a given browser renders the perspective/3D transforms,
+      // so this also gets the same hard safety margin as falling tiles.
+      const rowHPercent = ((100 / r) * ROTATING_SIZE_SAFETY) + "%";
       const startWheel = -(extraRows + (r - 1) / 2) * geo.anglePerRow;
 
       const perColDelay = 280;

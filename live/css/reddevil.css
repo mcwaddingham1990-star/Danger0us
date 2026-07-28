@@ -40,7 +40,11 @@ html, body {
   flex-direction: row;
   gap: 1px;
   padding: 0.6%;
-  perspective: 900px;
+  /* A tight perspective relative to the window's own height causes
+     adjacent tiles to visually overlap mid-rotation (foreshortened more
+     than the tile-geometry math accounts for) — same bug and same fix
+     as Blue Diamonds' reel-window. */
+  perspective: 2200px;
   perspective-origin: 50% 50%;
   overflow: hidden;
 }
@@ -418,7 +422,7 @@ html, body {
   display: flex;
   flex-direction: row;
   gap: 1px;
-  perspective: 480px;
+  perspective: 1800px;
   perspective-origin: 50% 50%;
   overflow: hidden;
 }

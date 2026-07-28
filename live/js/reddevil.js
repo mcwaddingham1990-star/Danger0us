@@ -158,7 +158,10 @@ if (player) {
       return bez(u, y1, y2);
     };
   }
-  const spinEase = cubicBezierEase(0.16, 0.85, 0.3, 1.12);
+  // No overshoot (y2=1.0, not >1) — an overshoot-then-settle wobble here
+  // was visible unblurred right before the reel fully stops and showed
+  // as symbols overlapping in one square. See the same fix in game.js.
+  const spinEase = cubicBezierEase(0.16, 0.85, 0.3, 1.0);
 
   function spinReveal(container, c, r, finalGrid) {
     return new Promise((resolve) => {
@@ -180,7 +183,7 @@ if (player) {
 
       for (let ci = 0; ci < c; ci++) {
         const col = document.createElement("div");
-        col.className = "reel-col spinning";
+        col.className = "reel-col";
 
         const cyl = document.createElement("div");
         cyl.className = "reel-cyl";
@@ -203,6 +206,7 @@ if (player) {
         const isLastCol = ci === c - 1;
 
         setTimeout(() => {
+          col.classList.add("spinning");
           const t0 = performance.now();
           function frame(now) {
             const t = Math.min(1, (now - t0) / baseDuration);

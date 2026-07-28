@@ -87,7 +87,12 @@ if (player) {
     setupGridContainer(container);
     container.innerHTML = "";
     const geo = reelGeometry(r, container.clientHeight);
-    const rowHPercent = ((100 / r) * TILE_SIZE_BOOST) + "%";
+    // Falling tiles rotate through a 55deg sweep (see .tile.falling's
+    // dropIn animation) — same reason the spin strip can't use the size
+    // boost: oversized tiles mid-rotation visually overlap their
+    // neighbors. Only tiles that are NOT actively animating (the settled
+    // grid) get the larger size.
+    const rowHPercent = (fallingCells ? (100 / r) : ((100 / r) * TILE_SIZE_BOOST)) + "%";
 
     for (let ci = 0; ci < c; ci++) {
       const col = document.createElement("div");

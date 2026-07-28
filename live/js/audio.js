@@ -220,23 +220,6 @@ const AudioManager = (() => {
     return src;
   }
 
-  // TEMPORARY debug readout — shows the last few sounds played so we can
-  // pin down exactly which manifest key + file is the buzzer by reading
-  // it off the screen. Remove once that's confirmed.
-  let debugLog = [];
-  function debugShow(manifestKey, file) {
-    debugLog.unshift(new Date().toISOString().slice(11, 19) + "  " + manifestKey + " -> " + file);
-    debugLog = debugLog.slice(0, 6);
-    let el = document.getElementById("__sfxDebug");
-    if (!el) {
-      el = document.createElement("div");
-      el.id = "__sfxDebug";
-      el.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:rgba(0,0,0,0.85);color:#0f0;font:11px/1.4 monospace;padding:6px 8px;pointer-events:none;white-space:pre;";
-      document.body.appendChild(el);
-    }
-    el.textContent = debugLog.join("\n");
-  }
-
   // Plays one manifest key: a random (no-immediate-repeat) pick from its
   // pool, or nothing if the pool is empty (true placeholder).
   function play(manifestKey, opts) {
@@ -246,7 +229,6 @@ const AudioManager = (() => {
     if (!entry) return Promise.resolve(null);
     const file = pickFromPool(manifestKey, entry.pool || []);
     if (!file) return Promise.resolve(null);
-    debugShow(manifestKey, file);
     return loadBuffer(SFX_DIR, file).then((buffer) => (buffer ? playBuffer(buffer, opts) : null));
   }
 

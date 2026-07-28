@@ -108,54 +108,105 @@ if (player) {
     }
   }
 
-  function highlightCells(container, cells) {
+  // Three beats per cluster win: (1) every matched tile lights up electric
+  // blue immediately, (2) ~140ms later the cluster's OUTER perimeter (not
+  // the seams between matched tiles) flashes white-hot, (3) ~260ms in,
+  // everything blows up. Takes `clusters` (one entry per matched group,
+  // each with its own cell list) rather than a flat cell list so the
+  // outline can tell which edges are the group's actual outer boundary.
+  function highlightCells(container, clusters) {
     const containerRect = container.getBoundingClientRect();
+    const allCells = [];
 
-    cells.forEach(([r, c]) => {
+    const getTileRect = (r, c) => {
       const tile = container.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
-      if (!tile) return;
-      tile.classList.add("winning");
+      return tile ? { tile, rect: tile.getBoundingClientRect() } : null;
+    };
 
-      // Positioned from the tile's actual rendered (post-3D-transform)
-      // bounding box, not its pre-transform layout box — the curved
-      // reels mean those two are very different now. Appended to the
-      // reel-window, not the tile — .tile has overflow:hidden (for its
-      // background-image) which would clip a burst/sparks meant to
-      // spill outside the tile's own bounds.
-      const tileRect = tile.getBoundingClientRect();
-      const cx = tileRect.left - containerRect.left + tileRect.width / 2;
-      const cy = tileRect.top - containerRect.top + tileRect.height / 2;
+    clusters.forEach((cluster) => {
+      const cellSet = new Set(cluster.cells.map(([r, c]) => r + "," + c));
+      cluster.cells.forEach(([r, c]) => allCells.push([r, c]));
 
-      const boom = document.createElement("div");
-      boom.className = "explosion";
-      boom.style.left = cx + "px";
-      boom.style.top = cy + "px";
-      boom.style.width = (tileRect.width * 1.7) + "px";
-      boom.style.height = (tileRect.height * 1.7) + "px";
-      container.appendChild(boom);
-      boom.addEventListener("animationend", () => boom.remove());
+      // Beat 1: per-tile electric glow, right away.
+      cluster.cells.forEach(([r, c]) => {
+        const found = getTileRect(r, c);
+        if (found) found.tile.classList.add("winning");
+      });
 
-      const sparkCount = 6;
-      for (let i = 0; i < sparkCount; i++) {
-        const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.6;
-        const dist = 14 + Math.random() * 16;
-        const spark = document.createElement("div");
-        spark.className = "spark";
-        spark.style.left = cx + "px";
-        spark.style.top = cy + "px";
-        spark.style.setProperty("--dx", Math.cos(angle) * dist + "px");
-        spark.style.setProperty("--dy", Math.sin(angle) * dist + "px");
-        container.appendChild(spark);
-        spark.addEventListener("animationend", () => spark.remove());
-      }
+      // Beat 2: white-hot outline along the cluster's outer edges only —
+      // an edge only gets drawn where the neighbor isn't part of this
+      // same cluster (or is off the grid), so tiles touching each other
+      // inside the group stay seamless.
+      setTimeout(() => {
+        const NEIGHBORS = [["up", -1, 0], ["down", 1, 0], ["left", 0, -1], ["right", 0, 1]];
+        cluster.cells.forEach(([r, c]) => {
+          const found = getTileRect(r, c);
+          if (!found) return;
+          const { rect: tileRect } = found;
+          const left = tileRect.left - containerRect.left;
+          const top = tileRect.top - containerRect.top;
+
+          NEIGHBORS.forEach(([dir, dr, dc]) => {
+            if (cellSet.has((r + dr) + "," + (c + dc))) return;
+            const bar = document.createElement("div");
+            bar.className = "cluster-edge cluster-edge-" + dir;
+            if (dir === "up" || dir === "down") {
+              bar.style.left = left + "px";
+              bar.style.width = tileRect.width + "px";
+              bar.style.top = (dir === "up" ? top : top + tileRect.height) + "px";
+            } else {
+              bar.style.top = top + "px";
+              bar.style.height = tileRect.height + "px";
+              bar.style.left = (dir === "left" ? left : left + tileRect.width) + "px";
+            }
+            container.appendChild(bar);
+            bar.addEventListener("animationend", () => bar.remove());
+          });
+        });
+      }, 140);
     });
 
-    // container is the reel-window (main or bonus) itself.
-    container.classList.remove("shaking");
-    // Force reflow so re-adding the class restarts the animation on
-    // back-to-back cascades instead of a no-op if it's already there.
-    void container.offsetWidth;
-    container.classList.add("shaking");
+    // Beat 3: the explosion — staged after the outline flash so it reads
+    // as a sequence (glow -> outline -> boom), not everything at once.
+    setTimeout(() => {
+      allCells.forEach(([r, c]) => {
+        const found = getTileRect(r, c);
+        if (!found) return;
+        const { rect: tileRect } = found;
+        const cx = tileRect.left - containerRect.left + tileRect.width / 2;
+        const cy = tileRect.top - containerRect.top + tileRect.height / 2;
+
+        const boom = document.createElement("div");
+        boom.className = "explosion";
+        boom.style.left = cx + "px";
+        boom.style.top = cy + "px";
+        boom.style.width = (tileRect.width * 1.9) + "px";
+        boom.style.height = (tileRect.height * 1.9) + "px";
+        container.appendChild(boom);
+        boom.addEventListener("animationend", () => boom.remove());
+
+        const sparkCount = 9;
+        for (let i = 0; i < sparkCount; i++) {
+          const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.6;
+          const dist = 18 + Math.random() * 22;
+          const spark = document.createElement("div");
+          spark.className = "spark";
+          spark.style.left = cx + "px";
+          spark.style.top = cy + "px";
+          spark.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+          spark.style.setProperty("--dy", Math.sin(angle) * dist + "px");
+          container.appendChild(spark);
+          spark.addEventListener("animationend", () => spark.remove());
+        }
+      });
+
+      // container is the reel-window (main or bonus) itself.
+      container.classList.remove("shaking");
+      // Force reflow so re-adding the class restarts the animation on
+      // back-to-back cascades instead of a no-op if it's already there.
+      void container.offsetWidth;
+      container.classList.add("shaking");
+    }, 260);
   }
 
   // Standard cubic-bezier timing-function evaluator (bisection on the
@@ -269,9 +320,8 @@ if (player) {
   async function playCascadeFrom(container, c, r, result, bet) {
     for (let i = 1; i < result.steps.length; i++) {
       const step = result.steps[i];
-      const cells = step.removedCells.map((k) => k.split(",").map(Number));
-      highlightCells(container, cells);
-      DrAudio.winHit(cells.length, i - 1);
+      highlightCells(container, step.clusters);
+      DrAudio.winHit(step.removedCells.length, i - 1);
       const stepWin = roundBet((step.stepMultiplierUnits || 0) * bet);
       if (stepWin > 0) showWinFlash("+" + stepWin.toFixed(1) + " CREDITS", "cascade");
       await sleep(480);

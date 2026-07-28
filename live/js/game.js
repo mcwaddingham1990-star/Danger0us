@@ -272,7 +272,7 @@ if (player) {
 
       for (let ci = 0; ci < c; ci++) {
         const col = document.createElement("div");
-        col.className = "reel-col spinning";
+        col.className = "reel-col";
 
         const cyl = document.createElement("div");
         cyl.className = "reel-cyl";
@@ -295,6 +295,12 @@ if (player) {
         const isLastCol = ci === c - 1;
 
         setTimeout(() => {
+          // Only marked "spinning" (and blurred) once this column's own
+          // rotation actually starts — it used to be set for every
+          // column immediately at spin-start, so later columns sat
+          // there visibly blurred while still motionless, waiting out
+          // their stagger delay.
+          col.classList.add("spinning");
           const t0 = performance.now();
           function frame(now) {
             const t = Math.min(1, (now - t0) / baseDuration);

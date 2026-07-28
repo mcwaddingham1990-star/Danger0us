@@ -155,7 +155,9 @@ html, body {
 }
 
 .reel-col.spinning {
-  filter: blur(5px) brightness(1.15);
+  /* No blur — symbols stay readable while scrolling past instead of
+     smearing into a blob. Brightness bump alone still reads as motion. */
+  filter: brightness(1.15) saturate(1.1);
 }
 
 .reel-cyl {

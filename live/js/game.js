@@ -229,7 +229,13 @@ if (player) {
       return bez(u, y1, y2);
     };
   }
-  const spinEase = cubicBezierEase(0.16, 0.85, 0.3, 1.12);
+  // y2 used to be 1.12 (an overshoot past the resting angle that eased
+  // back) for a bouncy stop feel. Blur clears 260ms before the animation
+  // actually finishes, so that overshoot-then-settle wobble was visible
+  // unblurred right at the end — with the grid's now-coarser per-row
+  // angle (6 rows vs the old 8), it read as two symbols overlapping in
+  // one square until it snapped to rest. No overshoot now.
+  const spinEase = cubicBezierEase(0.16, 0.85, 0.3, 1.0);
 
   /*
     Realistic reel spin: each column mounts a strip of filler symbols

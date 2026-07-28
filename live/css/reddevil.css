@@ -25,19 +25,22 @@ html, body {
   background-repeat: no-repeat;
 }
 
-/* Reel window sits in the same spot on this backdrop as Blue Diamonds' —
-   both cabinet images share the same empty-window position/size. */
+/* Measured directly off Redgame.png's black window — it is NOT the same
+   position/size as Blue Diamonds' cabinet art, despite matching overall
+   canvas dimensions. Getting this wrong made every tile render in a box
+   far shorter than the real window, which forced background-size:cover
+   to crop/zoom hard into each symbol. */
 .reel-window {
   position: absolute;
   left: 9.5%;
   right: 9.5%;
-  top: 33.4375%;
-  height: 39%;
+  top: 22.3%;
+  height: 55.5%;
   display: flex;
   flex-direction: row;
   gap: 1px;
   padding: 0.6%;
-  perspective: 480px;
+  perspective: 900px;
   perspective-origin: 50% 50%;
   overflow: hidden;
 }
@@ -103,8 +106,8 @@ html, body {
   position: absolute;
   left: 9.5%;
   right: 9.5%;
-  top: 33.4375%;
-  height: 39%;
+  top: 22.3%;
+  height: 55.5%;
   pointer-events: none;
   z-index: 1;
 }
@@ -121,8 +124,8 @@ html, body {
   position: absolute;
   left: 10%;
   right: 10%;
-  top: 33%;
-  height: 35%;
+  top: 23%;
+  height: 54%;
   display: flex;
   align-items: center;
   justify-content: center;

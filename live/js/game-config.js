@@ -97,20 +97,29 @@ function pickSymbolImage(sym) {
   return sym.imgs[Math.floor(Math.random() * sym.imgs.length)];
 }
 
+// Rebalanced for the 6x6 (36-tile) board — a cluster of 25+ needed
+// "large" on the old 64-tile board, which is 69% of the entire grid and
+// basically unreachable on 36 tiles. Thresholds now scale with however
+// many tiles the grid actually has, and payouts are cut to roughly the
+// old 8x8 RTP (fewer tiles means clusters form less often, so each one
+// pays more instead of paying the same amount more rarely).
 const TIER_PAYTABLE = {
-  "silver-letter": { small: 0.05, medium: 1, large: 8 },
-  "silver-photo": { small: 0.3, medium: 8, large: 60 },
-  "blue-letter": { small: 0.6, medium: 12, large: 100 },
-  "blue-photo": { small: 1, medium: 15, large: 150 },
-  "red-letter": { small: 2, medium: 25, large: 300 },
-  "red-photo": { small: 3, medium: 40, large: 600 },
-  joker: { small: 5, medium: 50, large: 750 },
+  "silver-letter": { small: 0.03, medium: 0.5, large: 4 },
+  "silver-photo": { small: 0.15, medium: 4, large: 30 },
+  "blue-letter": { small: 0.3, medium: 6, large: 50 },
+  "blue-photo": { small: 0.5, medium: 8, large: 75 },
+  "red-letter": { small: 1, medium: 13, large: 150 },
+  "red-photo": { small: 1.5, medium: 20, large: 300 },
+  joker: { small: 2.5, medium: 25, large: 375 },
 };
 
 function payoutMultiplierForCluster(tier, clusterSize) {
   const table = TIER_PAYTABLE[tier] || TIER_PAYTABLE["silver-photo"];
-  if (clusterSize >= 25) return table.large;
-  if (clusterSize >= 10) return table.medium;
+  const totalCells = GRID_COLS * GRID_ROWS;
+  const largeThreshold = Math.max(8, Math.round(totalCells * 0.390625)); // 25/64 on the original board
+  const mediumThreshold = Math.max(6, Math.round(totalCells * 0.15625)); // 10/64 on the original board
+  if (clusterSize >= largeThreshold) return table.large;
+  if (clusterSize >= mediumThreshold) return table.medium;
   return table.small;
 }
 

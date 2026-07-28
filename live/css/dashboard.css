@@ -256,9 +256,7 @@ html, body {
 }
 
 .game-option.red {
-  background: rgba(120, 20, 20, 0.18);
-  cursor: default;
-  opacity: 0.75;
+  background: linear-gradient(135deg, rgba(201, 40, 20, 0.35), rgba(0,0,0,0.3));
 }
 
 .game-option .name {

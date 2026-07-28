@@ -200,7 +200,13 @@ if (player) {
       DrAudio.reelStart();
 
       const geo = reelGeometry(r, container.clientHeight);
-      const rowHPercent = ((100 / r) * TILE_SIZE_BOOST) + "%";
+      // Unboosted here on purpose: the cylinder radius is derived from
+      // each row's real (unboosted) angular slot, so oversizing tiles
+      // while a whole packed strip is rotating makes neighboring tiles'
+      // enlarged edges visually overlap mid-spin — two symbols blending
+      // into one square until it settles. The boost only applies once
+      // the reel is static (see renderGrid).
+      const rowHPercent = (100 / r) + "%";
       const startWheel = -(extraRows + (r - 1) / 2) * geo.anglePerRow;
 
       const perColDelay = 280;

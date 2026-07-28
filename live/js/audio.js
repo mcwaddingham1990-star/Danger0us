@@ -489,12 +489,14 @@ const AudioManager = (() => {
 
   function clickSound() { play("click", { gain: 0.55 }); }
 
-  // "Metal click + tech click + small electric" layered per spec.
+  // "Metal click + tech click" — used to also layer in an electric_tiny
+  // crackle here, but that's a buzzy, alarm-like sample and it was firing
+  // on literally every single spin press. Dropped; click + click_tech
+  // alone still give the button a solid press feel.
   function spinButtonPress() {
     layer([
       { key: "click", gain: 0.7 },
       { key: "click_tech", gain: 0.45, delay: 0.03 },
-      { key: "electric_tiny", gain: 0.3, delay: 0.06, stopAt: 0.5 },
     ]);
   }
 

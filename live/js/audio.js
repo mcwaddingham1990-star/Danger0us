@@ -64,7 +64,11 @@ const AudioManager = (() => {
     // ---- Reels ----
     reel_start: { pool: ["electric-whoosh", "whoosh2", "whoosh3", "whip", "whip2", "swish", "swish2", "metal-hit", "metal-sword", "metal-rattle"] },
     reel_loop: { pool: ["spin-loop", "slotspin1", "slotspin2", "slotspin3", "slotspin4", "slotspin5", "slotspin6"] },
-    reel_stop: { pool: ["slotclack1", "slotclack2", "stomp2", "impact1"] },
+    // slotclack1/slotclack2 used to be in this pool — despite the name,
+    // they're actually 6-11s continuous buzzing/rattling drones, not
+    // short clacks, so every reel landing had a chance to trigger a
+    // long obnoxious buzz right at the end of a spin. Pulled.
+    reel_stop: { pool: ["stomp2", "impact1"] },
     reel_stop_final: { pool: ["stomp1", "impact2", "impact-loud"] },
 
     // ---- Rare symbol landings — only the red tier + jester wild get a

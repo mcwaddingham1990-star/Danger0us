@@ -62,7 +62,7 @@ html, body {
   flex-direction: row;
   gap: 1px;
   padding: 0.6%;
-  perspective: 480px;
+  perspective: 1600px;
   perspective-origin: 50% 50%;
   overflow: hidden;
 }
@@ -471,7 +471,7 @@ html, body {
   display: flex;
   flex-direction: row;
   gap: 1px;
-  perspective: 480px;
+  perspective: 1600px;
   perspective-origin: 50% 50%;
   overflow: hidden;
 }

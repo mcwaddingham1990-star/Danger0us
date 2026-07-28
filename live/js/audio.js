@@ -79,10 +79,14 @@ const AudioManager = (() => {
     red_letter_land: { pool: ["swish2", "click-sharp"] },
 
     // ---- Win tiers — one sound per win, not a pile of layered effects ----
-    small_win: { pool: ["high-tech-bleep", "electric-zap", "bell3", "metallic-click2", "tones2"] },
+    // tones2 (a two-pulse alarm/buzzer tone) used to sit in small_win,
+    // where it could fire on literally any small cluster/line win — the
+    // most common win tier — so it ended up sounding on nearly every
+    // spin. It's a big-moment sound, so it only fires for big/huge wins now.
+    small_win: { pool: ["high-tech-bleep", "electric-zap", "bell3", "metallic-click2"] },
     medium_win: { pool: ["movie-boom", "thunder-cinematic", "motorcycle2", "bell-ding", "bell2", "crowd-cheer2"] },
-    big_win: { pool: ["cinematic-boom", "brass-cinematic", "fire1", "crowd1", "coin4", "coin7"] },
-    huge_win: { pool: ["war-boom2", "fire-roar", "motorcycle-rev", "glass2", "coin9", "coin13", "coin17"] },
+    big_win: { pool: ["cinematic-boom", "brass-cinematic", "fire1", "crowd1", "coin4", "coin7", "tones2"] },
+    huge_win: { pool: ["war-boom2", "fire-roar", "motorcycle-rev", "glass2", "coin9", "coin13", "coin17", "tones2"] },
 
     // ---- Cascades ----
     cascade_slam: { pool: ["stomp3", "impact2"] },

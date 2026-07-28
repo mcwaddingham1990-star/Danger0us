@@ -344,12 +344,21 @@ const AudioManager = (() => {
       // takes over automatically, no code changes needed.
       music: "lobby_theme",
     },
-    // The game screen's ambience is exactly this one loop — untouched.
-    // All play-screen SFX below layer on top of it via sfxBus, never
-    // by editing this scene.
+    // Brought up to the same ambience package as login/lobby (wind +
+    // thunder/raven/metal-rattle/heartbeat) and louder than before, so
+    // it's audible under the game's background music track instead of
+    // being just a low drone. Play-screen SFX still layer on top via
+    // sfxBus, untouched by any of this.
     game: {
       loops: [
-        { key: "drone", gain: 0.2 },
+        { key: "drone", gain: 0.32 },
+        { key: "wind", gain: 0.2 },
+      ],
+      periodic: [
+        () => schedulePeriodic(() => play("thunder", { gain: 0.5, bus: ambBus }), 25000, 55000),
+        () => schedulePeriodic(() => play("raven", { gain: 0.3, bus: ambBus }), 30000, 60000),
+        () => schedulePeriodic(() => play("metal_rattle", { gain: 0.28, bus: ambBus }), 24000, 45000),
+        () => schedulePeriodic(() => play("heartbeat", { gain: 0.35, rate: 0.9, bus: ambBus }), 45000, 90000),
       ],
     },
   };

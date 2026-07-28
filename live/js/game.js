@@ -488,6 +488,7 @@ if (player) {
   document.getElementById("btnSpinFloat").addEventListener("click", () => {
     DrAudio.start();
     DrAudio.enterScene("game");
+    DrAudio.startCustomTrack("last-lever-pull.mp3", { gain: 0.4 });
     DrAudio.spinButtonPress();
     playSpin();
   });
@@ -496,6 +497,7 @@ if (player) {
   muteBtn.addEventListener("click", () => {
     DrAudio.start();
     DrAudio.enterScene("game");
+    DrAudio.startCustomTrack("last-lever-pull.mp3", { gain: 0.4 });
     DrAudio.clickSound();
     const next = !DrAudio.isMuted();
     DrAudio.setMuted(next);

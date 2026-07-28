@@ -8,6 +8,11 @@ if (player) {
   const BONUS_COLS = 8;
   const BONUS_ROWS = 10;
 
+  // Tiles are sized a bit larger than their exact grid slot (still
+  // centered on it) so symbols read bigger without changing the reel
+  // window's bounds or the spin geometry math.
+  const TILE_SIZE_BOOST = 1.14;
+
   const MIN_BET = 0.1;
   const MAX_BET = 100;
   const BET_STEP = 0.1;
@@ -82,7 +87,7 @@ if (player) {
     setupGridContainer(container);
     container.innerHTML = "";
     const geo = reelGeometry(r, container.clientHeight);
-    const rowHPercent = (100 / r) + "%";
+    const rowHPercent = ((100 / r) * TILE_SIZE_BOOST) + "%";
 
     for (let ci = 0; ci < c; ci++) {
       const col = document.createElement("div");
@@ -195,7 +200,7 @@ if (player) {
       DrAudio.reelStart();
 
       const geo = reelGeometry(r, container.clientHeight);
-      const rowHPercent = (100 / r) + "%";
+      const rowHPercent = ((100 / r) * TILE_SIZE_BOOST) + "%";
       const startWheel = -(extraRows + (r - 1) / 2) * geo.anglePerRow;
 
       const perColDelay = 280;

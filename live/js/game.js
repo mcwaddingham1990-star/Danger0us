@@ -310,6 +310,12 @@ if (player) {
         }, delay + baseDuration - 260);
 
         setTimeout(() => {
+          // Bounce right as this column's own scroll actually stops —
+          // staggered per column, same as the sound/blur already are.
+          col.classList.add("landed");
+        }, delay + baseDuration);
+
+        setTimeout(() => {
           remaining--;
           if (remaining === 0) {
             renderGrid(container, finalGrid, c, r, false);

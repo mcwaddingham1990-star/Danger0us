@@ -118,6 +118,12 @@ if (player) {
     const containerRect = container.getBoundingClientRect();
     const allCells = [];
 
+    // Every tile has a permanent blue neon border, so the win glow alone
+    // used to blend right into the board. Dimming everything else for
+    // the duration of the sequence makes the winning cluster actually
+    // pop instead of reading as "the same board, slightly brighter."
+    container.classList.add("win-focus");
+
     const getTileRect = (r, c) => {
       const tile = container.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
       return tile ? { tile, rect: tile.getBoundingClientRect() } : null;
@@ -163,7 +169,7 @@ if (player) {
             bar.addEventListener("animationend", () => bar.remove());
           });
         });
-      }, 140);
+      }, 150);
     });
 
     // Beat 3: the explosion — staged after the outline flash so it reads
@@ -206,7 +212,12 @@ if (player) {
       // back-to-back cascades instead of a no-op if it's already there.
       void container.offsetWidth;
       container.classList.add("shaking");
-    }, 260);
+    }, 300);
+
+    // Lift the dim once the explosion has had time to fully play out.
+    setTimeout(() => {
+      container.classList.remove("win-focus");
+    }, 850);
   }
 
   // Standard cubic-bezier timing-function evaluator (bisection on the

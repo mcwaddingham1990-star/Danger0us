@@ -66,6 +66,42 @@ html, body {
   to { filter: brightness(1.6); }
 }
 
+/*
+  White-hot outline around a matched payline's OUTER perimeter — see
+  highlightCells() in reddevil.js, which only emits a bar on edges where
+  the neighboring cell isn't part of the same line, so tiles touching
+  inside the line stay seamless and only the true boundary lights up.
+  Genuinely animates color (not just opacity/brightness): starts as the
+  same hot ember tone the tiles glow, then transitions to white-hot.
+*/
+.cluster-edge {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  animation: clusterEdgeFlash 0.3s ease-out forwards;
+}
+
+.cluster-edge-up, .cluster-edge-down { height: 3px; }
+.cluster-edge-left, .cluster-edge-right { width: 3px; }
+
+@keyframes clusterEdgeFlash {
+  0% {
+    opacity: 0;
+    background: #ff5c2e;
+    box-shadow: 0 0 8px 2px #ff5c2e, 0 0 18px 6px rgba(255, 92, 46, 0.9), 0 0 32px 12px rgba(255, 92, 46, 0.6);
+  }
+  35% {
+    opacity: 1;
+    background: #ffae5c;
+    box-shadow: 0 0 10px 3px #ffae5c, 0 0 22px 8px rgba(255, 174, 92, 0.95), 0 0 36px 14px rgba(255, 200, 140, 0.75);
+  }
+  100% {
+    opacity: 1;
+    background: #ffffff;
+    box-shadow: 0 0 14px 4px #ffffff, 0 0 30px 10px rgba(255, 255, 255, 0.95), 0 0 46px 16px rgba(255, 220, 190, 0.8);
+  }
+}
+
 .tile.falling {
   animation: dropIn 0.28s ease-out;
 }

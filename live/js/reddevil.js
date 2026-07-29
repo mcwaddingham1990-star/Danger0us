@@ -85,45 +85,110 @@ if (player) {
     }
   }
 
-  function highlightCells(container, cells) {
+  // Staged win effect, same 3-beat sequence as Blue Diamonds' game.js:
+  // (1) every winning tile glows hot immediately, (2) ~140ms later each
+  // payline's own OUTER perimeter (not the seams between matched tiles)
+  // flashes white-hot, (3) ~260ms in, everything blows up. Takes `lines`
+  // (one entry per matching payline, each with its own cell list) rather
+  // than a flat cell list so the outline can tell which edges are the
+  // line's actual outer boundary.
+  function highlightCells(container, lines) {
     const containerRect = container.getBoundingClientRect();
+    const allCells = [];
+    const seen = new Set();
 
-    cells.forEach(([r, c]) => {
+    const getTileRect = (r, c) => {
       const tile = container.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
-      if (!tile) return;
-      tile.classList.add("winning");
+      return tile ? { tile, rect: tile.getBoundingClientRect() } : null;
+    };
 
-      const tileRect = tile.getBoundingClientRect();
-      const cx = tileRect.left - containerRect.left + tileRect.width / 2;
-      const cy = tileRect.top - containerRect.top + tileRect.height / 2;
+    lines.forEach((line) => {
+      const cellSet = new Set(line.cells.map(([r, c]) => r + "," + c));
 
-      const boom = document.createElement("div");
-      boom.className = "explosion";
-      boom.style.left = cx + "px";
-      boom.style.top = cy + "px";
-      boom.style.width = (tileRect.width * 1.7) + "px";
-      boom.style.height = (tileRect.height * 1.7) + "px";
-      container.appendChild(boom);
-      boom.addEventListener("animationend", () => boom.remove());
+      // Beat 1: per-tile electric glow, right away.
+      line.cells.forEach(([r, c]) => {
+        const key = r + "," + c;
+        if (!seen.has(key)) {
+          seen.add(key);
+          allCells.push([r, c]);
+        }
+        const found = getTileRect(r, c);
+        if (found) found.tile.classList.add("winning");
+      });
 
-      const sparkCount = 6;
-      for (let i = 0; i < sparkCount; i++) {
-        const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.6;
-        const dist = 14 + Math.random() * 16;
-        const spark = document.createElement("div");
-        spark.className = "spark";
-        spark.style.left = cx + "px";
-        spark.style.top = cy + "px";
-        spark.style.setProperty("--dx", Math.cos(angle) * dist + "px");
-        spark.style.setProperty("--dy", Math.sin(angle) * dist + "px");
-        container.appendChild(spark);
-        spark.addEventListener("animationend", () => spark.remove());
-      }
+      // Beat 2: white-hot outline along this payline's outer edges only —
+      // an edge only gets drawn where the neighbor isn't part of this
+      // same line, so tiles touching each other inside the line stay
+      // seamless and only the true boundary lights up.
+      setTimeout(() => {
+        const NEIGHBORS = [["up", -1, 0], ["down", 1, 0], ["left", 0, -1], ["right", 0, 1]];
+        line.cells.forEach(([r, c]) => {
+          const found = getTileRect(r, c);
+          if (!found) return;
+          const { rect: tileRect } = found;
+          const left = tileRect.left - containerRect.left;
+          const top = tileRect.top - containerRect.top;
+
+          NEIGHBORS.forEach(([dir, dr, dc]) => {
+            if (cellSet.has((r + dr) + "," + (c + dc))) return;
+            const bar = document.createElement("div");
+            bar.className = "cluster-edge cluster-edge-" + dir;
+            if (dir === "up" || dir === "down") {
+              bar.style.left = left + "px";
+              bar.style.width = tileRect.width + "px";
+              bar.style.top = (dir === "up" ? top : top + tileRect.height) + "px";
+            } else {
+              bar.style.top = top + "px";
+              bar.style.height = tileRect.height + "px";
+              bar.style.left = (dir === "left" ? left : left + tileRect.width) + "px";
+            }
+            container.appendChild(bar);
+            bar.addEventListener("animationend", () => bar.remove());
+          });
+        });
+      }, 140);
     });
 
-    container.classList.remove("shaking");
-    void container.offsetWidth;
-    container.classList.add("shaking");
+    // Beat 3: the explosion — staged after the outline flash so it reads
+    // as a sequence (glow -> outline -> boom), not everything at once.
+    // Deduped across paylines so overlapping lines don't stack multiple
+    // blasts on the same tile.
+    setTimeout(() => {
+      allCells.forEach(([r, c]) => {
+        const found = getTileRect(r, c);
+        if (!found) return;
+        const { rect: tileRect } = found;
+        const cx = tileRect.left - containerRect.left + tileRect.width / 2;
+        const cy = tileRect.top - containerRect.top + tileRect.height / 2;
+
+        const boom = document.createElement("div");
+        boom.className = "explosion";
+        boom.style.left = cx + "px";
+        boom.style.top = cy + "px";
+        boom.style.width = (tileRect.width * 1.7) + "px";
+        boom.style.height = (tileRect.height * 1.7) + "px";
+        container.appendChild(boom);
+        boom.addEventListener("animationend", () => boom.remove());
+
+        const sparkCount = 6;
+        for (let i = 0; i < sparkCount; i++) {
+          const angle = (i / sparkCount) * Math.PI * 2 + Math.random() * 0.6;
+          const dist = 14 + Math.random() * 16;
+          const spark = document.createElement("div");
+          spark.className = "spark";
+          spark.style.left = cx + "px";
+          spark.style.top = cy + "px";
+          spark.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+          spark.style.setProperty("--dy", Math.sin(angle) * dist + "px");
+          container.appendChild(spark);
+          spark.addEventListener("animationend", () => spark.remove());
+        }
+      });
+
+      container.classList.remove("shaking");
+      void container.offsetWidth;
+      container.classList.add("shaking");
+    }, 260);
   }
 
   function cubicBezierEase(x1, y1, x2, y2) {
@@ -227,20 +292,20 @@ if (player) {
 
   async function revealWins(container, result) {
     if (result.wins.length === 0) return;
-    const allCells = [];
     const seen = new Set();
+    let cellCount = 0;
     result.wins.forEach((w) => {
       w.cells.forEach(([r, c]) => {
         const key = r + "," + c;
         if (!seen.has(key)) {
           seen.add(key);
-          allCells.push([r, c]);
+          cellCount++;
         }
       });
     });
-    highlightCells(container, allCells);
-    DrAudio.winHit(allCells.length, 0);
-    await sleep(650);
+    highlightCells(container, result.wins);
+    DrAudio.winHit(cellCount, 0);
+    await sleep(800);
   }
 
   function settleStats(betAmount, winAmount) {
@@ -422,7 +487,6 @@ if (player) {
   document.getElementById("btnSpinFloat").addEventListener("click", () => {
     DrAudio.start();
     DrAudio.enterScene("game");
-    DrAudio.startCustomTrack("last-lever-pull.mp3", { gain: 0.4 });
     DrAudio.spinButtonPress();
     playSpin();
   });
@@ -431,7 +495,6 @@ if (player) {
   muteBtn.addEventListener("click", () => {
     DrAudio.start();
     DrAudio.enterScene("game");
-    DrAudio.startCustomTrack("last-lever-pull.mp3", { gain: 0.4 });
     DrAudio.clickSound();
     const next = !DrAudio.isMuted();
     DrAudio.setMuted(next);

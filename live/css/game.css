@@ -105,8 +105,6 @@ html, body {
 */
 .cluster-edge {
   position: absolute;
-  background: #ffffff;
-  box-shadow: 0 0 8px 2px #ffffff, 0 0 18px 6px rgba(255, 255, 255, 0.95), 0 0 32px 12px rgba(180, 225, 255, 0.7);
   z-index: 3;
   pointer-events: none;
   animation: clusterEdgeFlash 0.3s ease-out forwards;
@@ -115,10 +113,25 @@ html, body {
 .cluster-edge-up, .cluster-edge-down { height: 3px; }
 .cluster-edge-left, .cluster-edge-right { width: 3px; }
 
+/* Genuinely animates color, not just opacity/brightness: starts as the
+   same electric blue the tiles glow, then transitions to white-hot as it
+   flashes — "glowing blue to white hot and exploded". */
 @keyframes clusterEdgeFlash {
-  0% { opacity: 0; filter: brightness(1); }
-  20% { opacity: 1; filter: brightness(2.4); }
-  100% { opacity: 1; filter: brightness(1.4); }
+  0% {
+    opacity: 0;
+    background: #2fc3ff;
+    box-shadow: 0 0 8px 2px #2fc3ff, 0 0 18px 6px rgba(47, 195, 255, 0.9), 0 0 32px 12px rgba(47, 195, 255, 0.6);
+  }
+  35% {
+    opacity: 1;
+    background: #7fdcff;
+    box-shadow: 0 0 10px 3px #7fdcff, 0 0 22px 8px rgba(140, 225, 255, 0.95), 0 0 36px 14px rgba(160, 230, 255, 0.75);
+  }
+  100% {
+    opacity: 1;
+    background: #ffffff;
+    box-shadow: 0 0 14px 4px #ffffff, 0 0 30px 10px rgba(255, 255, 255, 0.95), 0 0 46px 16px rgba(210, 240, 255, 0.8);
+  }
 }
 
 .tile.falling {

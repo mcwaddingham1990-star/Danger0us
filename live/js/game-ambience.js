@@ -11,7 +11,7 @@
     started = true;
     DrAudio.start();
     DrAudio.enterScene("game");
-    DrAudio.startCustomTrack("last-lever-pull.mp3", { gain: 0.4 });
+    DrAudio.startCustomTrack("last-lever-pull.mp3", { gain: 0.4, startAt: 23 });
     document.removeEventListener("click", start);
     document.removeEventListener("touchstart", start);
     document.removeEventListener("keydown", start);

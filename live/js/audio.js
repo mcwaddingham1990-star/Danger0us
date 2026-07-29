@@ -376,13 +376,28 @@ const AudioManager = (() => {
   // Real tracks layered ON TOP of a scene's ambience (not swapped in) —
   // e.g. a real song playing alongside the drone/wind bed rather than
   // replacing it. Keyed by filename under live/audio/music/.
+  //
+  // opts.startAt (seconds): the track skips the intro and picks up from
+  // here on first play. Native <audio> loop always rewinds to 0, which
+  // would replay the intro on every repeat — so looping is done manually
+  // instead: loop is left off, and on "ended" playback jumps straight
+  // back to startAt rather than the beginning.
   function startCustomTrack(filename, opts) {
     opts = opts || {};
     if (customTracks[filename]) return;
     ensureCtx();
     const el = new Audio(MUSIC_DIR + filename);
-    el.loop = true;
+    const startAt = opts.startAt || 0;
+    el.loop = false;
     el.volume = 1;
+    const seekToStart = () => { el.currentTime = startAt; };
+    if (startAt > 0) {
+      el.addEventListener("loadedmetadata", seekToStart, { once: true });
+      el.addEventListener("ended", () => {
+        seekToStart();
+        el.play().catch(() => {});
+      });
+    }
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
     g.gain.linearRampToValueAtTime(opts.gain != null ? opts.gain : 0.4, ctx.currentTime + (opts.fadeIn != null ? opts.fadeIn : 2.5));

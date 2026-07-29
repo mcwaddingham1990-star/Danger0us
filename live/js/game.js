@@ -455,6 +455,12 @@ if (player) {
 
   async function playSpin() {
     if (isSpinning) return;
+    // The Spin button sits in a higher stacking layer than the bonus
+    // overlays, so it stays clickable even while "BONUS COMPLETE" (or the
+    // trigger/free-spins screens) are still up. Spinning through them used
+    // to bury the next win's glow/outline animation underneath the still-
+    // open modal, invisible until the player dismissed it.
+    if (document.querySelector(".bonus-overlay.show")) return;
     if (player.credits < bet) {
       alert("Not enough credits.");
       return;

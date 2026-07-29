@@ -438,6 +438,12 @@ if (player) {
 
   async function playSpin() {
     if (isSpinning) return;
+    // Same fix as Blue Diamonds: the Spin button sits above the bonus
+    // overlays in stacking order, so it stayed clickable while "BONUS
+    // COMPLETE" (or the trigger/free-spins screens) were still open —
+    // spinning through them buried the next win's glow/outline animation
+    // underneath the still-open modal.
+    if (document.querySelector(".bonus-overlay.show")) return;
     if (player.credits < bet) {
       alert("Not enough credits.");
       return;

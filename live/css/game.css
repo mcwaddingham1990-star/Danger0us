@@ -19,8 +19,8 @@ html, body {
 .cabinet-frame {
   position: relative;
   width: 100%;
-  aspect-ratio: 841 / 1870;
-  background-image: url('../images/dash.screens/cabinet-blue-diamonds-v2.jpg');
+  aspect-ratio: 517 / 1087;
+  background-image: url('../images/dash.screens/cabinet-blue-diamonds-v3.png');
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
@@ -53,18 +53,17 @@ html, body {
 }
 
 /*
-  Window position pixel-measured against the new backdrop
-  (cabinet-blue-diamonds-v2.jpg, 841x1870): the dark leather cutout runs
-  roughly x=90-756, y=610-1355, with the women's heads starting around
-  y=1350 — top/height below are inset a bit further so the grid never
-  reaches that low.
+  Window position pixel-measured against the backdrop
+  (cabinet-blue-diamonds-v3.png, 517x1087) — this art has an actual 6x6
+  grid pattern baked in at x=32-485, y=276-800, so these percentages line
+  the real tiles up directly on top of the drawn grid lines.
 */
 .reel-window {
   position: absolute;
-  left: 11.5%;
-  right: 11%;
-  top: 33%;
-  height: 37.5%;
+  left: 6.2%;
+  right: 6.2%;
+  top: 25.4%;
+  height: 48.2%;
   display: flex;
   flex-direction: row;
   gap: 1px;
@@ -426,9 +425,9 @@ html, body {
 
 .heat-meter-wrap {
   position: absolute;
-  left: 11.5%;
-  right: 11%;
-  bottom: 6.5%;
+  left: 6.2%;
+  right: 6.2%;
+  bottom: 1.8%;
   z-index: 22;
   display: flex;
   align-items: center;
@@ -827,7 +826,7 @@ html, body {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 12.5%;
+  bottom: 5.4%;
   display: flex;
   justify-content: space-around;
   font-size: 0.75rem;

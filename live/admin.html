@@ -25,28 +25,16 @@
     <div class="section-label">Global Game Settings (default for all players)</div>
 
     <div class="setting-row">
-      <label>Win Probability <span class="val" id="valWinProb">35%</span></label>
+      <label>Win Probability (Blue Diamonds) <span class="val" id="valWinProb">35%</span></label>
       <input type="range" id="winProbability" min="0" max="100" value="35">
     </div>
     <div class="setting-row">
-      <label>Jester Appearance Rate <span class="val" id="valJester">8%</span></label>
+      <label>Joker Appearance Rate (Blue Diamonds) <span class="val" id="valJester">8%</span></label>
       <input type="range" id="jesterRate" min="0" max="100" value="8">
     </div>
     <div class="setting-row">
-      <label>Average Free Spins Awarded <span class="val" id="valFreeSpins">15</span></label>
-      <input type="range" id="avgFreeSpins" min="3" max="50" value="15">
-    </div>
-    <div class="setting-row">
-      <label>Multiplier Frequency <span class="val" id="valMultFreq">50%</span></label>
-      <input type="range" id="multiplierFrequency" min="0" max="100" value="50">
-    </div>
-    <div class="setting-row">
-      <label>Mega Jackpot Chance <span class="val" id="valJackpot">1%</span></label>
-      <input type="range" id="jackpotChance" min="0" max="100" value="1">
-    </div>
-    <div class="setting-row">
-      <label>Cluster Size Requirement <span class="val" id="valCluster">5</span></label>
-      <input type="range" id="clusterMin" min="3" max="10" value="5">
+      <label>Cluster Size Requirement (Blue Diamonds, min 5) <span class="val" id="valCluster">5</span></label>
+      <input type="range" id="clusterMin" min="5" max="10" value="5">
     </div>
 
     <button class="btn-secondary" id="viewAsPlayerBtn" style="margin-top: 10px;">View as Player</button>
@@ -65,11 +53,8 @@
 <script>
   const SETTINGS_FIELDS = [
     { key: "winProbability", label: "Win Probability", suffix: "%", min: 0, max: 100 },
-    { key: "jesterRate", label: "Jester Appearance Rate", suffix: "%", min: 0, max: 100 },
-    { key: "avgFreeSpins", label: "Average Free Spins Awarded", suffix: "", min: 3, max: 50 },
-    { key: "multiplierFrequency", label: "Multiplier Frequency", suffix: "%", min: 0, max: 100 },
-    { key: "jackpotChance", label: "Mega Jackpot Chance", suffix: "%", min: 0, max: 100 },
-    { key: "clusterMin", label: "Cluster Size Requirement", suffix: "", min: 3, max: 10 },
+    { key: "jesterRate", label: "Joker Appearance Rate", suffix: "%", min: 0, max: 100 },
+    { key: "clusterMin", label: "Cluster Size Requirement", suffix: "", min: 5, max: 10 },
   ];
 
   async function renderPlayers() {
@@ -325,9 +310,6 @@
     await renderFeedback();
     bindSetting("winProbability", "valWinProb", "%", "winProbability", true);
     bindSetting("jesterRate", "valJester", "%", "jesterRate", true);
-    bindSetting("avgFreeSpins", "valFreeSpins", "", "avgFreeSpins", true);
-    bindSetting("multiplierFrequency", "valMultFreq", "%", "multiplierFrequency", true);
-    bindSetting("jackpotChance", "valJackpot", "%", "jackpotChance", true);
     bindSetting("clusterMin", "valCluster", "", "clusterMin", true);
   })();
 

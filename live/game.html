@@ -21,9 +21,27 @@
   <div class="cabinet-frame" id="cabinetFrame">
     <div class="card-stream" id="cardStream"></div>
 
+    <button class="fx-toggle" id="btnFxToggle" title="Reduced effects">⚡</button>
+    <button class="breakdown-toggle" id="btnBreakdownToggle" title="Win breakdown">i</button>
+    <div class="breakdown-panel" id="breakdownPanel"></div>
+
+    <div class="cascade-badge" id="cascadeBadge">×1</div>
+
     <div class="reel-window" id="reelWindow"></div>
+    <div class="overdrive-flash" id="overdriveFlash"></div>
+    <div class="inferno-border" id="infernoBorder"></div>
 
     <div class="win-flash-layer" id="winFlashLayer"></div>
+    <div class="overdrive-banner" id="overdriveBanner">BLUE OVERDRIVE</div>
+    <div class="death-ride-banner" id="deathRideBanner">
+      <div class="lvl">LEVEL <span id="deathRideLevelNum">1</span></div>
+      <div class="name" id="deathRideLevelName">THE GATES OPEN</div>
+    </div>
+
+    <div class="heat-meter-wrap" id="heatMeterWrap">
+      <div class="heat-meter-label">Heat</div>
+      <div class="heat-meter-track"><div class="heat-meter-fill" id="heatMeterFill"></div></div>
+    </div>
 
     <div class="hud">
       <div class="hud-item">
@@ -40,15 +58,42 @@
       </div>
     </div>
 
+    <div class="jester-takeover" id="jesterTakeover">
+      <div class="headline" id="takeoverHeadline">JESTER TAKEOVER</div>
+      <div class="sub" id="takeoverSub"></div>
+    </div>
+
+    <div class="death-ride-event" id="deathRideEvent">
+      <div class="headline" id="deathRideEventHeadline">BLUE JESTER DEATH RIDE</div>
+    </div>
+
     <div class="bonus-overlay" id="bonusAnnounce" style="background-image:url('images/dash.screens/bonus-spins-scroll.png');">
       <h2>BONUS SPINS TRIGGERED</h2>
-      <p>Jesters found: <span id="jesterCountText">0</span></p>
+      <p>Bonus symbols found: <span id="jesterCountText">0</span></p>
       <p class="big" id="freeSpinsAwarded">0</p>
       <p>FREE SPINS</p>
     </div>
 
     <div class="bonus-overlay" id="bonusPlay" style="background-image:url('images/dash.screens/bonus-play-scroll.png');">
       <div class="bonus-reel-window" id="bonusReelWindow"></div>
+      <div class="cascade-badge" id="bonusCascadeBadge">×1</div>
+      <div class="overdrive-flash" id="bonusOverdriveFlash"></div>
+      <div class="inferno-border" id="bonusInfernoBorder"></div>
+      <div class="death-ride-banner" id="bonusDeathRideBanner">
+        <div class="lvl">LEVEL <span id="bonusDeathRideLevelNum">1</span></div>
+        <div class="name" id="bonusDeathRideLevelName">THE GATES OPEN</div>
+      </div>
+      <div class="heat-meter-wrap" id="bonusHeatMeterWrap" style="bottom: 15%;">
+        <div class="heat-meter-label">Heat</div>
+        <div class="heat-meter-track"><div class="heat-meter-fill" id="bonusHeatMeterFill"></div></div>
+      </div>
+      <div class="jester-takeover" id="bonusJesterTakeover">
+        <div class="headline" id="bonusTakeoverHeadline">JESTER TAKEOVER</div>
+        <div class="sub" id="bonusTakeoverSub"></div>
+      </div>
+      <div class="death-ride-event" id="bonusDeathRideEvent">
+        <div class="headline">BLUE JESTER DEATH RIDE</div>
+      </div>
       <div class="hud" style="bottom: 6%;">
         <div class="hud-item">
           <div class="hud-label">Free Spins Left</div>
@@ -71,7 +116,7 @@
       <p class="big" id="endTotalWin">0</p>
       <p>Biggest Cascade: <span id="endBiggestCascade">0</span> symbols</p>
       <p>Highest Multiplier: <span id="endHighestMult">1x</span></p>
-      <p>Jackpot: <span id="endJackpotStatus">NO WIN</span></p>
+      <p>Highest Level Reached: <span id="endDeathRideLevel">LEVEL 1</span></p>
       <div>
         <button id="btnPlayAgain">PLAY AGAIN</button>
         <button id="btnReturnToGame">RETURN TO GAME</button>

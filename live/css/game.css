@@ -62,26 +62,20 @@ html, body {
   flex-direction: row;
   gap: 1px;
   padding: 0.6%;
-  perspective: 1600px;
-  perspective-origin: 50% 50%;
   overflow: hidden;
 }
 
 /*
-  Every reel column is a little 3D carousel: tiles sit on a virtual
-  cylinder (rotateX by a fixed --slot-angle around the shared X axis,
-  pushed out to the cylinder wall via translateZ). The column itself is
-  pushed back by that same radius so the front-facing tile renders at
-  natural scale instead of being magnified toward the camera. Spinning
-  is just animating the inherited --wheel-rotation custom property on
-  the column — every tile's rotateX(calc(...)) picks it up for free.
+  Reels used to be a 3D "cylinder" of rotated tiles (rotateX + translateZ
+  under a tight perspective). That looked right in testing but rendered
+  broken on real devices — different browsers/GPUs compositing that many
+  packed rotating 3D tiles differently, showing two symbols' worth of
+  image inside one tile. Replaced with plain 2D vertical scrolling:
+  .reel-strip is a normal flex column of tiles, translateY'd up to
+  reveal the final rows. No perspective, no rotation — a whole class of
+  rendering bug is now structurally impossible instead of tuned around.
 */
 .tile {
-  position: absolute;
-  left: 1px;
-  right: 1px;
-  top: calc(50% - var(--row-h, 12.5%) / 2);
-  height: var(--row-h, 12.5%);
   overflow: hidden;
   border-radius: 3px;
   background-size: cover;
@@ -89,8 +83,6 @@ html, body {
   filter: saturate(1.3) brightness(1.1) contrast(1.05);
   box-shadow: 0 0 8px 1px rgba(100, 170, 255, 0.55), 0 0 0 1px rgba(160, 205, 255, 0.55) inset;
   transition: box-shadow 0.2s ease, filter 0.2s ease;
-  transform: rotateX(calc(var(--slot-angle, 0deg) + var(--wheel-rotation, 0deg))) translateZ(var(--reel-radius, 0px));
-  backface-visibility: hidden;
 }
 
 .tile.winning {
@@ -134,18 +126,10 @@ html, body {
 }
 
 @keyframes dropIn {
-  from { transform: rotateX(calc(var(--slot-angle, 0deg) - 55deg)) translateZ(var(--reel-radius, 0px)); opacity: 0.2; }
-  to   { transform: rotateX(var(--slot-angle, 0deg)) translateZ(var(--reel-radius, 0px)); opacity: 1; }
+  from { transform: translateY(-15%); opacity: 0.3; }
+  to   { transform: translateY(0); opacity: 1; }
 }
 
-/*
-  Each column is its own 3D carousel — see .tile comment above. The
-  carousel's 3D context (.reel-cyl) is kept on its own element with
-  nothing else on it: per spec, a non-visible overflow OR a filter that
-  isn't `none` (even blur(0)) silently forces transform-style back to
-  flat, which would break preserve-3d. So .reel-col (the flex item) owns
-  clipping + the spin blur, and .reel-cyl (its one child) owns the 3D.
-*/
 .reel-col {
   position: relative;
   flex: 1 1 0;
@@ -160,12 +144,16 @@ html, body {
   filter: brightness(1.15) saturate(1.1);
 }
 
-.reel-cyl {
+/* Plain flex column — tiles just flow top to bottom. Settled/falling
+   tiles are laid out in normal flow (JS sets each tile's height); the
+   spin strip is the same, just with a translateY animated on this
+   element to scroll the whole column. */
+.reel-strip {
   position: relative;
   width: 100%;
   height: 100%;
-  transform-style: preserve-3d;
-  transform: translateZ(calc(-1 * var(--reel-radius, 0px)));
+  display: flex;
+  flex-direction: column;
 }
 
 .win-flash-layer {
@@ -471,7 +459,5 @@ html, body {
   display: flex;
   flex-direction: row;
   gap: 1px;
-  perspective: 1600px;
-  perspective-origin: 50% 50%;
   overflow: hidden;
 }

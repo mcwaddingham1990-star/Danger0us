@@ -45,29 +45,15 @@ if (player) {
     if (betVal) betVal.textContent = bet.toFixed(1);
   }
 
-  // Reels sit on a virtual cylinder, same geometry approach as Blue
-  // Diamonds — see game.css's .tile comment for the full explanation.
-  const CURVE_MAX_DEG = 42;
-
-  function reelGeometry(r, windowHeightPx) {
-    const anglePerRow = (2 * CURVE_MAX_DEG) / r;
-    const anglePerRowRad = anglePerRow * Math.PI / 180;
-    const rowHeightPx = (windowHeightPx || 1) / r;
-    const radius = (rowHeightPx / 2) / Math.tan(anglePerRowRad / 2);
-    return { anglePerRow, radius };
-  }
-
-  function slotAngleDeg(k, r, anglePerRow) {
-    return ((r - 1) / 2 - k) * anglePerRow;
-  }
-
-  function makeTile(symId, k, r, geo, rowHPercent, extraClass) {
+  // Reels used to be a 3D "cylinder" of rotated tiles — that rendered
+  // broken on real devices (different browsers/GPUs compositing that
+  // many packed rotating 3D tiles differently), so this is now plain 2D
+  // vertical scrolling instead. See the same change in game.js.
+  function makeTile(symId, extraClass) {
     const sym = symbolById(symId);
     const tile = document.createElement("div");
     tile.className = "tile" + (extraClass ? " " + extraClass : "");
     if (sym) tile.style.backgroundImage = `url('${pickSymbolImage(sym)}')`;
-    tile.style.setProperty("--row-h", rowHPercent);
-    tile.style.setProperty("--slot-angle", slotAngleDeg(k, r, geo.anglePerRow).toFixed(3) + "deg");
     return tile;
   }
 
@@ -79,24 +65,22 @@ if (player) {
   function renderGrid(container, grid, c, r) {
     setupGridContainer(container);
     container.innerHTML = "";
-    const geo = reelGeometry(r, container.clientHeight);
-    const rowHPercent = (100 / r) + "%";
 
     for (let ci = 0; ci < c; ci++) {
       const col = document.createElement("div");
       col.className = "reel-col";
 
-      const cyl = document.createElement("div");
-      cyl.className = "reel-cyl";
-      cyl.style.setProperty("--reel-radius", geo.radius.toFixed(1) + "px");
+      const strip = document.createElement("div");
+      strip.className = "reel-strip";
 
       for (let ri = 0; ri < r; ri++) {
-        const tile = makeTile(grid[ri][ci], ri, r, geo, rowHPercent, null);
+        const tile = makeTile(grid[ri][ci], null);
+        tile.style.flex = "0 0 " + (100 / r) + "%";
         tile.dataset.r = ri;
         tile.dataset.c = ci;
-        cyl.appendChild(tile);
+        strip.appendChild(tile);
       }
-      col.appendChild(cyl);
+      col.appendChild(strip);
       container.appendChild(col);
     }
   }
@@ -173,17 +157,8 @@ if (player) {
 
       DrAudio.reelStart();
 
-      const geo = reelGeometry(r, container.clientHeight);
-      // Hard safety margin while the strip is actively rotating: shrink
-      // the tile a bit and space the cylinder's rows further apart than
-      // the "exact fit" trig gives. Perspective foreshortening and
-      // per-browser 3D-transform rendering differences meant tiles
-      // could still visually overlap while moving even with exact-fit
-      // math — this trades a hairline gap during motion for tiles that
-      // genuinely cannot touch. Same fix as Blue Diamonds' game.js.
-      geo.radius *= 1.3;
-      const rowHPercent = ((100 / r) * 0.9) + "%";
-      const startWheel = -(extraRows + (r - 1) / 2) * geo.anglePerRow;
+      const rowHeightPx = container.clientHeight / r;
+      const targetY = -(extraRows * rowHeightPx);
 
       const perColDelay = 280;
       const baseDuration = 2500;
@@ -193,10 +168,9 @@ if (player) {
         const col = document.createElement("div");
         col.className = "reel-col";
 
-        const cyl = document.createElement("div");
-        cyl.className = "reel-cyl";
-        cyl.style.setProperty("--reel-radius", geo.radius.toFixed(1) + "px");
-        cyl.style.setProperty("--wheel-rotation", startWheel.toFixed(3) + "deg");
+        const strip = document.createElement("div");
+        strip.className = "reel-strip";
+        strip.style.transform = "translateY(0px)";
 
         for (let si = 0; si < stripLen; si++) {
           const isFinal = si >= extraRows;
@@ -204,10 +178,12 @@ if (player) {
           const symId = isFinal
             ? finalGrid[ri][ci]
             : SYMBOL_SET[Math.floor(Math.random() * SYMBOL_SET.length)].id;
-          cyl.appendChild(makeTile(symId, si - extraRows, r, geo, rowHPercent));
+          const tile = makeTile(symId, null);
+          tile.style.flex = "0 0 " + rowHeightPx + "px";
+          strip.appendChild(tile);
         }
 
-        col.appendChild(cyl);
+        col.appendChild(strip);
         container.appendChild(col);
 
         const delay = ci * perColDelay;
@@ -219,8 +195,8 @@ if (player) {
           function frame(now) {
             const t = Math.min(1, (now - t0) / baseDuration);
             const eased = spinEase(t);
-            const wheel = startWheel + (0 - startWheel) * eased;
-            cyl.style.setProperty("--wheel-rotation", wheel.toFixed(3) + "deg");
+            const y = targetY * eased;
+            strip.style.transform = `translateY(${y.toFixed(2)}px)`;
             if (t < 1) requestAnimationFrame(frame);
           }
           requestAnimationFrame(frame);

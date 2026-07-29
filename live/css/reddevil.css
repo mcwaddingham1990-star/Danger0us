@@ -40,29 +40,19 @@ html, body {
   flex-direction: row;
   gap: 1px;
   padding: 0.6%;
-  /* A tight perspective relative to the window's own height causes
-     adjacent tiles to visually overlap mid-rotation (foreshortened more
-     than the tile-geometry math accounts for) — same bug and same fix
-     as Blue Diamonds' reel-window. */
-  perspective: 2200px;
-  perspective-origin: 50% 50%;
   overflow: hidden;
 }
 
+/* Reels used to be a 3D "cylinder" of rotated tiles — that rendered
+   broken on real devices. Replaced with plain 2D vertical scrolling
+   (.reel-strip gets translateY'd). See game.css for the full story. */
 .tile {
-  position: absolute;
-  left: 1px;
-  right: 1px;
-  top: calc(50% - var(--row-h, 16.6%) / 2);
-  height: var(--row-h, 16.6%);
   overflow: hidden;
   border-radius: 3px;
   background-size: cover;
   background-position: center;
   box-shadow: 0 0 0 1px rgba(220, 70, 70, 0.3) inset;
   transition: box-shadow 0.2s ease;
-  transform: rotateX(calc(var(--slot-angle, 0deg) + var(--wheel-rotation, 0deg))) translateZ(var(--reel-radius, 0px));
-  backface-visibility: hidden;
 }
 
 .tile.winning {
@@ -81,8 +71,8 @@ html, body {
 }
 
 @keyframes dropIn {
-  from { transform: rotateX(calc(var(--slot-angle, 0deg) - 55deg)) translateZ(var(--reel-radius, 0px)); opacity: 0.2; }
-  to   { transform: rotateX(var(--slot-angle, 0deg)) translateZ(var(--reel-radius, 0px)); opacity: 1; }
+  from { transform: translateY(-15%); opacity: 0.3; }
+  to   { transform: translateY(0); opacity: 1; }
 }
 
 .reel-col {
@@ -97,12 +87,12 @@ html, body {
   filter: blur(5px) brightness(1.15);
 }
 
-.reel-cyl {
+.reel-strip {
   position: relative;
   width: 100%;
   height: 100%;
-  transform-style: preserve-3d;
-  transform: translateZ(calc(-1 * var(--reel-radius, 0px)));
+  display: flex;
+  flex-direction: column;
 }
 
 /* Faint horizontal guides for the 6 straight paylines. */
@@ -422,8 +412,6 @@ html, body {
   display: flex;
   flex-direction: row;
   gap: 1px;
-  perspective: 1800px;
-  perspective-origin: 50% 50%;
   overflow: hidden;
 }
 

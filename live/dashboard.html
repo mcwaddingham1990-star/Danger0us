@@ -76,6 +76,22 @@
       <p class="redeem-note">Share this with a friend — when they sign up with it, the admin will see it and can send you referral credits.</p>
     </div>
 
+    <div class="deposit-history">
+      <div class="label">Comment or Report a Bug</div>
+      <div class="feedback-kind-toggle">
+        <button type="button" class="feedback-kind-btn active" data-kind="comment">Comment</button>
+        <button type="button" class="feedback-kind-btn" data-kind="bug">Report Bug</button>
+      </div>
+      <textarea id="feedbackMessage" rows="3" maxlength="2000" placeholder="Tell us what's on your mind..."></textarea>
+      <button class="btn-primary" id="feedbackSubmitBtn" style="margin-top:10px;">SUBMIT</button>
+      <div class="form-message" id="feedbackFormMessage"></div>
+    </div>
+
+    <div class="deposit-history">
+      <div class="label">Your Submitted Feedback</div>
+      <div id="feedbackHistoryList"></div>
+    </div>
+
     <button class="btn-primary" id="goToGamesBtn">GO TO GAMES</button>
     <button class="btn-secondary" id="returnToAdminBtn" style="display:none;">Return to Admin</button>
     <button class="btn-secondary" id="signOutBtn">Sign Out</button>
@@ -148,6 +164,37 @@
     el.className = "form-message show " + kind;
   }
 
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+
+  let selectedFeedbackKind = "comment";
+
+  async function renderFeedbackHistory(uid) {
+    const box = document.getElementById("feedbackHistoryList");
+    const mine = await drGetMyFeedback(uid);
+    if (mine.length === 0) {
+      box.innerHTML = '<div class="deposit-row"><span>No feedback submitted yet</span></div>';
+      return;
+    }
+    box.innerHTML = mine.slice().sort((a, b) => b.createdAt - a.createdAt).map((f) => {
+      const date = new Date(f.createdAt).toLocaleDateString();
+      const kindLabel = f.kind === "bug" ? "Bug" : "Comment";
+      const statusLabel = f.status === "reviewed" ? "Reviewed" : "New";
+      return `
+        <div class="feedback-row">
+          <div class="feedback-top">
+            <span class="feedback-kind-tag ${f.kind === "bug" ? "bug" : ""}">${kindLabel}</span>
+            <span class="feedback-date">${date} — ${statusLabel}</span>
+          </div>
+          <div class="feedback-msg">${escapeHtml(f.message)}</div>
+        </div>
+      `;
+    }).join("");
+  }
+
   (async () => {
     const session = await drRequireSessionOrRedirect("signin.html");
     if (!session) return;
@@ -181,7 +228,32 @@
 
     renderStats(player);
     await renderRedemptionHistory(player.id);
+    await renderFeedbackHistory(player.id);
   })();
+
+  document.querySelectorAll(".feedback-kind-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedFeedbackKind = btn.dataset.kind;
+      document.querySelectorAll(".feedback-kind-btn").forEach((b) => b.classList.toggle("active", b === btn));
+    });
+  });
+
+  document.getElementById("feedbackSubmitBtn").addEventListener("click", async () => {
+    if (!currentPlayer) return;
+    const textarea = document.getElementById("feedbackMessage");
+    const msg = document.getElementById("feedbackFormMessage");
+    const message = textarea.value.trim();
+
+    if (!message) {
+      showMessage(msg, "Write something first.", "error");
+      return;
+    }
+
+    await drCreateFeedback(currentPlayer.id, currentPlayer.email, selectedFeedbackKind, message);
+    textarea.value = "";
+    showMessage(msg, "Thanks — sent to the admin.", "success");
+    await renderFeedbackHistory(currentPlayer.id);
+  });
 
   document.getElementById("redeemBtn").addEventListener("click", async () => {
     if (!currentPlayer) return;

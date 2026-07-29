@@ -224,3 +224,65 @@
   width: 100%;
   accent-color: #2f7dff;
 }
+
+.feedback-item {
+  background: rgba(0, 8, 20, 0.55);
+  border: 1px solid rgba(120, 170, 230, 0.25);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.feedback-item .feedback-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.feedback-item .feedback-kind-tag {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(120, 170, 230, 0.15);
+  color: #cfe4ff;
+}
+
+.feedback-item .feedback-kind-tag.bug {
+  background: rgba(200, 40, 40, 0.18);
+  color: #ffb3b3;
+}
+
+.feedback-item .feedback-email {
+  font-size: 0.78rem;
+  color: #f0f5ff;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.feedback-item .feedback-date {
+  font-size: 0.68rem;
+  color: #7f97b8;
+  margin-left: auto;
+}
+
+.feedback-item .feedback-msg {
+  font-size: 0.82rem;
+  color: #dbe6f5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 8px;
+}
+
+.feedback-item .reviewBtn {
+  padding: 7px 12px;
+  border: 1px solid rgba(120, 170, 230, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: #cfe4ff;
+  font-size: 0.72rem;
+  cursor: pointer;
+}

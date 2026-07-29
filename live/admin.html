@@ -19,6 +19,9 @@
     <div class="section-label">Referrals</div>
     <div id="referralList"></div>
 
+    <div class="section-label">Player Feedback &amp; Bug Reports</div>
+    <div id="feedbackList"></div>
+
     <div class="section-label">Global Game Settings (default for all players)</div>
 
     <div class="setting-row">
@@ -252,6 +255,49 @@
     });
   }
 
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+
+  async function renderFeedback() {
+    const list = document.getElementById("feedbackList");
+    const items = await drGetFeedback();
+
+    if (items.length === 0) {
+      list.innerHTML = '<div class="player-row">No feedback submitted yet.</div>';
+      return;
+    }
+
+    list.innerHTML = items.map((f) => {
+      const date = new Date(f.createdAt).toLocaleString();
+      const kindLabel = f.kind === "bug" ? "Bug" : "Comment";
+      return `
+        <div class="feedback-item" data-id="${f.id}">
+          <div class="feedback-header">
+            <span class="feedback-kind-tag ${f.kind === "bug" ? "bug" : ""}">${kindLabel}</span>
+            <span class="feedback-email">${escapeHtml(f.email)}</span>
+            <span class="feedback-date">${date}</span>
+          </div>
+          <div class="feedback-msg">${escapeHtml(f.message)}</div>
+          ${f.status === "reviewed"
+            ? '<span class="redeem-status fulfilled">Reviewed</span>'
+            : '<button class="reviewBtn">Mark Reviewed</button>'}
+        </div>
+      `;
+    }).join("");
+
+    list.querySelectorAll(".reviewBtn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const item = e.target.closest(".feedback-item");
+        btn.disabled = true;
+        await drMarkFeedbackReviewed(item.dataset.id);
+        await renderFeedback();
+      });
+    });
+  }
+
   async function bindSetting(id, valId, suffix, key, isInt) {
     const input = document.getElementById(id);
     const valEl = document.getElementById(valId);
@@ -276,6 +322,7 @@
 
     await renderPlayers();
     await renderReferrals();
+    await renderFeedback();
     bindSetting("winProbability", "valWinProb", "%", "winProbability", true);
     bindSetting("jesterRate", "valJester", "%", "jesterRate", true);
     bindSetting("avgFreeSpins", "valFreeSpins", "", "avgFreeSpins", true);

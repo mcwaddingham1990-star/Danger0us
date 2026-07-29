@@ -183,7 +183,17 @@ html, body {
 }
 
 .win-flash-text.jackpot {
-  font-size: 2.6rem;
+  /* Was a fixed 2.6rem, nowrap — "MEGA JACKPOT! +2500" at that size is
+     wider than the phone screen, so it got clipped by html/body's
+     overflow-x:hidden. A vw-scaled nowrap size still measured a few
+     pixels past the viewport edge depending on exact width, so instead
+     of chasing an exact-fit font size, this just allows it to wrap onto
+     a second line — guaranteed to never overflow regardless of screen
+     width or font metrics. */
+  font-size: 2.1rem;
+  white-space: normal;
+  max-width: 88%;
+  line-height: 1.15;
   color: #ffe9a8;
   text-shadow: 0 0 16px rgba(255, 200, 60, 0.95), 0 0 36px rgba(255, 140, 0, 0.8), 0 2px 4px rgba(0,0,0,0.8);
   animation: winFlashPopBig 1.6s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;

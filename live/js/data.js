@@ -317,3 +317,24 @@ async function drGetReferrals() {
 async function drMarkReferralRewarded(id) {
   await drDb.collection("referrals").doc(id).update({ rewarded: true });
 }
+
+// Player-submitted comments/bug reports, reviewed by the admin.
+async function drCreateFeedback(uid, email, kind, message) {
+  const doc = { uid, email, kind, message, status: "new", createdAt: Date.now() };
+  const ref = await drDb.collection("feedback").add(doc);
+  return Object.assign({ id: ref.id }, doc);
+}
+
+async function drGetFeedback() {
+  const snap = await drDb.collection("feedback").orderBy("createdAt", "desc").get();
+  return snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+}
+
+async function drGetMyFeedback(uid) {
+  const snap = await drDb.collection("feedback").where("uid", "==", uid).get();
+  return snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+}
+
+async function drMarkFeedbackReviewed(id) {
+  await drDb.collection("feedback").doc(id).update({ status: "reviewed" });
+}

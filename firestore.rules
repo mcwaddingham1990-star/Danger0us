@@ -138,5 +138,31 @@ service cloud.firestore {
 
       allow delete: if false;
     }
+
+    // Player-submitted comments/bug reports. A player can see and file
+    // their own; only the admin can see everyone's or change status.
+    match /feedback/{id} {
+      allow read: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'new'
+        && request.resource.data.kind in ['comment', 'bug']
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 2000;
+
+      // Only admin can flip status (e.g. mark reviewed); the report
+      // itself can't be altered after the fact.
+      allow update: if isAdmin()
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.kind == resource.data.kind
+        && request.resource.data.message == resource.data.message
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if false;
+    }
   }
 }

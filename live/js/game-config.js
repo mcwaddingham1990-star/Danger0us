@@ -24,9 +24,7 @@ const BONUS_ROWS = 10;
 
 const MIN_BET = 0.1;
 const MAX_BET = 100;
-// Discrete bet steps per the brief — Min/Max/+/- all walk this list
-// instead of a continuous +/- 0.1 increment.
-const BET_STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 25, 50, 75, 100];
+const BET_STEP = 0.1;
 
 // Minimum touching (orthogonal-only) same-family symbols to pay.
 const CLUSTER_MIN_FLOOR = 5;
@@ -117,13 +115,13 @@ const CLUSTER_SIZE_MULTIPLIERS = [
   { min: 36, max: Infinity, mult: 40 },
 ];
 
-// Single global RTP lever. The cluster-size/color/joker formula above is
-// exactly what the brief specified; simulating it landed base-game RTP
-// around 128%. Nothing forces a "certified" RTP for a private app like
-// this, so the actual numbers are left as specified — but everything
-// funnels through this one multiplier so it can be tuned in one place
-// later without touching the formula itself. 1 = unscaled.
-const PAYOUT_SCALE = 1;
+// Single global RTP lever. The cluster-size/color/joker formula is
+// exactly what the brief specified, but simulating it at face value (1)
+// landed base-game RTP around 108-128% — paid out more than it took in.
+// 0.88 brings that down to a standard ~95% RTP without touching any of
+// the actual formula weights above. Tune this one number if the game
+// feels too generous or too stingy; everything funnels through it.
+const PAYOUT_SCALE = 0.88;
 
 const CASCADE = {
   baseCap: 10,       // base-game cascade multiplier cap

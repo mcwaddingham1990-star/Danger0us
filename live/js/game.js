@@ -9,8 +9,6 @@ if (player) {
   const TILE_SIZE_BOOST = 1.14;
 
   let bet = 1;
-  let betIdx = BET_STEPS.indexOf(1);
-  if (betIdx < 0) betIdx = 0;
   let isSpinning = false;
   let reducedFx = localStorage.getItem("drReducedFx") === "1";
 
@@ -836,34 +834,33 @@ if (player) {
     muteBtn.textContent = next ? "🔇" : "🔊";
   });
 
-  function setBetIndex(idx) {
-    betIdx = Math.max(0, Math.min(BET_STEPS.length - 1, idx));
-    bet = BET_STEPS[betIdx];
+  function setBet(v) {
+    bet = roundBet(Math.max(MIN_BET, Math.min(MAX_BET, v)));
     refreshHud();
   }
 
   document.getElementById("btnMinBetFloat").addEventListener("click", () => {
     if (isSpinning) return;
     DrAudio.clickSound();
-    setBetIndex(0);
+    setBet(MIN_BET);
   });
 
   document.getElementById("btnBetDownFloat").addEventListener("click", () => {
     if (isSpinning) return;
     DrAudio.clickSound();
-    setBetIndex(betIdx - 1);
+    setBet(bet - BET_STEP);
   });
 
   document.getElementById("btnBetUpFloat").addEventListener("click", () => {
     if (isSpinning) return;
     DrAudio.clickSound();
-    setBetIndex(betIdx + 1);
+    setBet(bet + BET_STEP);
   });
 
   document.getElementById("btnMaxBetFloat").addEventListener("click", () => {
     if (isSpinning) return;
     DrAudio.clickSound();
-    setBetIndex(BET_STEPS.length - 1);
+    setBet(MAX_BET);
   });
 
   document.getElementById("btnPlayAgain").addEventListener("click", closeBonusEnd);

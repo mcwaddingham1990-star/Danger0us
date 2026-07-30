@@ -4,124 +4,64 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dangerous Rides — Red Devil</title>
-<link rel="stylesheet" href="css/reddevil.css">
+<style>
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: #05070c;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: #eef4ff;
+  }
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+  .top-bar a { color: #9db6d8; text-decoration: none; }
+  .maintenance-wrap {
+    max-width: 480px;
+    margin: 12vh auto 0;
+    padding: 0 24px;
+    text-align: center;
+  }
+  .maintenance-wrap h1 {
+    color: #ff5a5a;
+    text-shadow: 0 0 16px rgba(255, 90, 90, 0.7);
+    font-size: 1.6rem;
+    margin-bottom: 10px;
+  }
+  .maintenance-wrap p {
+    color: #cfe4ff;
+    line-height: 1.5;
+  }
+  .maintenance-wrap a.btn {
+    display: inline-block;
+    margin-top: 24px;
+    padding: 12px 22px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #2f7dff, #1454c9);
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+  }
+</style>
 </head>
 <body>
 <div class="top-bar">
   <a href="dashboard.html">&larr; Dashboard</a>
   <span>RED DEVIL</span>
-  <span>
-    <a href="admin.html" id="returnToAdminLink" style="display:none;">Return to Admin</a>
-    <button id="btnMute" class="mute-btn" title="Mute/unmute sound">🔊</button>
-    <span id="creditsTop">0 cr</span>
-  </span>
+  <span></span>
 </div>
 
-<div class="cabinet-wrap">
-  <div class="cabinet-frame" id="cabinetFrame">
-    <div class="payline-guides" id="paylineGuides"></div>
-
-    <div class="reel-window" id="reelWindow"></div>
-
-    <div class="win-flash-layer" id="winFlashLayer"></div>
-
-    <div class="hud">
-      <div class="hud-item">
-        <div class="hud-label">Bet</div>
-        <div class="hud-value" id="hudBet">5</div>
-      </div>
-      <div class="hud-item">
-        <div class="hud-label">Credits</div>
-        <div class="hud-value" id="hudCredits">0</div>
-      </div>
-      <div class="hud-item">
-        <div class="hud-label">Last Win</div>
-        <div class="hud-value" id="hudWin">0</div>
-      </div>
-    </div>
-
-    <div class="bonus-overlay" id="bonusAnnounce">
-      <h2>HELLFIRE SPINS TRIGGERED</h2>
-      <p>Devils found: <span id="wildCountText">0</span></p>
-      <p class="big" id="hellfireSpinsAwarded">0</p>
-      <p>FREE SPINS</p>
-    </div>
-
-    <div class="bonus-overlay" id="bonusPlay">
-      <div class="bonus-reel-window" id="bonusReelWindow"></div>
-      <div class="hud" style="bottom: 6%;">
-        <div class="hud-item">
-          <div class="hud-label">Spins Left</div>
-          <div class="hud-value" id="bonusSpinsLeft">0</div>
-        </div>
-        <div class="hud-item">
-          <div class="hud-label">Hellfire Mult.</div>
-          <div class="hud-value" id="bonusMultiplier">2x</div>
-        </div>
-        <div class="hud-item">
-          <div class="hud-label">Bonus Win</div>
-          <div class="hud-value" id="bonusWinTotal">0</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="bonus-overlay" id="bonusEnd">
-      <h2>HELLFIRE COMPLETE</h2>
-      <p>TOTAL FREE SPIN WINS</p>
-      <p class="big" id="endTotalWin">0</p>
-      <p>Biggest Line: <span id="endBiggestRun">0</span> in a row</p>
-      <p>Highest Multiplier: <span id="endHighestMult">2x</span></p>
-      <div>
-        <button id="btnPlayAgain">PLAY AGAIN</button>
-        <button id="btnReturnToGame">RETURN TO GAME</button>
-      </div>
-    </div>
-
-    <div class="gamble-overlay" id="gambleOverlay">
-      <h2>SOUL GAMBLE</h2>
-      <div class="gamble-pot" id="gamblePot">0</div>
-      <p class="gamble-note">Pick a door. Red doubles it, black takes it all.</p>
-      <div class="gamble-doors">
-        <button class="gamble-door red-door" id="gambleRed">RED</button>
-        <button class="gamble-door black-door" id="gambleBlack">BLACK</button>
-      </div>
-      <div class="gamble-result" id="gambleResult"></div>
-      <div class="gamble-actions">
-        <button class="gamble-collect" id="gambleCollect">COLLECT &amp; STOP</button>
-      </div>
-    </div>
-  </div>
+<div class="maintenance-wrap">
+  <h1>RED DEVIL IS BEING REBUILT</h1>
+  <p>This game is offline while it goes through the same overhaul Blue Diamonds just got — new visuals, new rules, new everything. Check back soon.</p>
+  <a class="btn" href="dashboard.html">Back to Dashboard</a>
 </div>
 
-<div class="control-bar">
-  <button class="ctrl-btn" id="btnMinBetFloat">
-    <span class="ctrl-label">Min</span>
-  </button>
-  <div class="ctrl-btn bet-stepper">
-    <button type="button" class="stepper-btn" id="btnBetDownFloat" aria-label="Lower bet">&minus;</button>
-    <div class="stepper-val">
-      <span class="ctrl-label">Bet</span>
-      <span class="ctrl-sub" id="betVal">1.0</span>
-    </div>
-    <button type="button" class="stepper-btn" id="btnBetUpFloat" aria-label="Raise bet">+</button>
-  </div>
-  <button class="ctrl-btn" id="btnMaxBetFloat">
-    <span class="ctrl-label">Max</span>
-  </button>
-  <button class="ctrl-btn spin" id="btnSpinFloat">
-    <span class="ctrl-label">Spin</span>
-  </button>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-<script src="js/firebase-init.js"></script>
-<script src="js/data.js"></script>
-<script src="js/reddevil-config.js"></script>
-<script src="js/reddevil-engine.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/game-ambience.js"></script>
-<script src="js/reddevil.js"></script>
 </body>
 </html>

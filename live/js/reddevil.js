@@ -404,7 +404,8 @@ if (player) {
         DrAudio.multiplierHit(highestMult);
       }
 
-      const result = resolveSpin(BONUS_COLS, BONUS_ROWS, { hellfireMultiplier });
+      const settings = await drGetEffectiveSettings(player);
+      const result = resolveSpin(BONUS_COLS, BONUS_ROWS, settings, { hellfireMultiplier });
 
       await spinReveal(bonusReelWindow, BONUS_COLS, BONUS_ROWS, result.grid);
       await sleep(200);
@@ -455,7 +456,8 @@ if (player) {
     const c = cols();
     const r = rows();
 
-    const result = resolveSpin(c, r, {});
+    const settings = await drGetEffectiveSettings(player);
+    const result = resolveSpin(c, r, settings, {});
 
     await spinReveal(reelWindow, c, r, result.grid);
     await sleep(200);

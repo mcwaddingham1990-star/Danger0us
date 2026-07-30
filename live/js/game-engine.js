@@ -308,6 +308,31 @@ function applyGravity(grid, cols, rows) {
   }
 }
 
+/*
+  Restores the old engine's "Win Probability 0 means a guaranteed no-win
+  spin" behavior — low weights alone still let a cluster form by chance
+  sometimes, so when the admin sets this to exactly 0, actively break any
+  cluster that formed on the initial drop before cascades ever start.
+  Mutates grid in place. Never touches jokers/bonus cells directly; if a
+  cluster's only breakable cell is a joker-heavy shape this just retries
+  up to the guard limit like the original did.
+*/
+function suppressClusters(grid, cols, rows, minSize) {
+  let guard = 0;
+  while (guard < 200) {
+    const clusters = findClusters(grid, cols, rows, minSize);
+    if (clusters.length === 0) break;
+    clusters.forEach((cluster) => {
+      const symbolCells = cluster.cells.filter(([r, c]) => grid[r][c] && grid[r][c].kind === "symbol");
+      const [r, c] = (symbolCells.length ? symbolCells : cluster.cells)[Math.floor((symbolCells.length ? symbolCells : cluster.cells).length / 2)];
+      const otherFamilies = FAMILIES.filter((f) => f.id !== cluster.familyId);
+      const replacement = otherFamilies[Math.floor(Math.random() * otherFamilies.length)];
+      grid[r][c] = { kind: "symbol", family: replacement.id, color: "plain" };
+    });
+    guard++;
+  }
+}
+
 function countBonusSymbols(grid, cols, rows) {
   let count = 0;
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (isBonus(grid[r][c])) count++;
@@ -412,6 +437,10 @@ function resolveSpin(cols, rows, settings, betAmount, options) {
       const jokerTier = takeover.jokers >= 2 ? "red" : "plain";
       applyUpgrades(grid, cols, rows, takeover.upgrades, Math.floor(takeover.upgrades / 3), takeover.jokers, jokerTier);
     }
+  }
+
+  if ((settings.winProbability || 0) <= 0) {
+    suppressClusters(grid, cols, rows, minSize);
   }
 
   const totalCells = cols * rows;

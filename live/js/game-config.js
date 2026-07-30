@@ -93,8 +93,13 @@ const JOKER_IMGS = ["images/symbols/joker/joker-777.jpg"];
 // Bonus/scatter trigger symbol — doesn't join clusters, doesn't pay on
 // its own, just counts toward the free-spin trigger/retrigger tables.
 // Reuses the other existing joker asset so nothing new had to be drawn.
+// Its actual on-grid rate is admin-tunable (settings.bonusRate, 0-100,
+// same spirit as jesterRate for Jokers) — see buildCellPool() in
+// game-engine.js. DEFAULT_BONUS_RATE reproduces the old fixed rate this
+// shipped with if a player has no override and the admin hasn't set one.
 const BONUS_SYMBOL_IMGS = ["images/symbols/joker/joker-card.jpg"];
-const BONUS_SYMBOL_RNG_WEIGHT = 1.4;
+const BONUS_SYMBOL_RNG_WEIGHT_MAX = 10;
+const DEFAULT_BONUS_RATE = 14;
 
 // Cluster-size payout multiplier — applied to (bet x symbol payWeight x
 // average color value x cascade multiplier x joker effects).

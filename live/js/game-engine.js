@@ -52,7 +52,8 @@ function buildCellPool(settings, favoredIds, opts) {
   const clusterBoost = 1 + (settings.winProbability / 100) * 2.5;
   const jesterRate = opts.jesterRateOverride != null ? opts.jesterRateOverride : settings.jesterRate;
   const totalJokerWeight = Math.max(0.2, (jesterRate / 100) * 8) * (opts.jokerRateMultiplier || 1);
-  const bonusSymbolWeight = BONUS_SYMBOL_RNG_WEIGHT * (opts.includeBonusSymbol === false ? 0 : 1);
+  const bonusRate = settings.bonusRate != null ? settings.bonusRate : DEFAULT_BONUS_RATE;
+  const bonusSymbolWeight = Math.max(0.15, (bonusRate / 100) * BONUS_SYMBOL_RNG_WEIGHT_MAX) * (opts.includeBonusSymbol === false ? 0 : 1);
 
   const pool = [];
 

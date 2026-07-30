@@ -33,6 +33,10 @@
       <input type="range" id="jesterRate" min="0" max="100" value="8">
     </div>
     <div class="setting-row">
+      <label>Bonus Spin Trigger Rate (Blue Diamonds) <span class="val" id="valBonusRate">14%</span></label>
+      <input type="range" id="bonusRate" min="0" max="100" value="14">
+    </div>
+    <div class="setting-row">
       <label>Cluster Size Requirement (Blue Diamonds, min 5) <span class="val" id="valCluster">5</span></label>
       <input type="range" id="clusterMin" min="5" max="10" value="5">
     </div>
@@ -54,6 +58,7 @@
   const SETTINGS_FIELDS = [
     { key: "winProbability", label: "Win Probability", suffix: "%", min: 0, max: 100 },
     { key: "jesterRate", label: "Joker Appearance Rate", suffix: "%", min: 0, max: 100 },
+    { key: "bonusRate", label: "Bonus Spin Trigger Rate", suffix: "%", min: 0, max: 100 },
     { key: "clusterMin", label: "Cluster Size Requirement", suffix: "", min: 5, max: 10 },
   ];
 
@@ -310,6 +315,7 @@
     await renderFeedback();
     bindSetting("winProbability", "valWinProb", "%", "winProbability", true);
     bindSetting("jesterRate", "valJester", "%", "jesterRate", true);
+    bindSetting("bonusRate", "valBonusRate", "%", "bonusRate", true);
     bindSetting("clusterMin", "valCluster", "", "clusterMin", true);
   })();
 

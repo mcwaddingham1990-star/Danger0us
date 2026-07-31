@@ -666,11 +666,12 @@ if (player) {
   };
 
   async function runBonus(freeSpinsAwarded, bonusSymbolCountInitial, lockedBet) {
+    document.body.classList.add("bonus-active");
     document.getElementById("jesterCountText").textContent = bonusSymbolCountInitial;
     document.getElementById("freeSpinsAwarded").textContent = freeSpinsAwarded;
     document.getElementById("bonusAnnounce").classList.add("show");
     DrAudio.bonusTrigger();
-    await sleep(2200);
+    await sleep(6000);
     document.getElementById("bonusAnnounce").classList.remove("show");
 
     const bonusPlayEl = document.getElementById("bonusPlay");
@@ -758,6 +759,7 @@ if (player) {
 
   function closeBonusEnd() {
     document.getElementById("bonusEnd").classList.remove("show");
+    document.body.classList.remove("bonus-active");
   }
 
   // ---- Base-game spin -----------------------------------------------------
@@ -795,6 +797,7 @@ if (player) {
     DrAudio.animateCountUp(document.getElementById("hudWin"), prevWin, winAmount, 700, "win_count");
     refreshHud();
     showBigWinTier(winAmount, bet);
+    DrAudio.spinResult(winAmount, bet);
 
     baseDom.cascadeBadge.classList.remove("show");
 
@@ -818,6 +821,7 @@ if (player) {
     DrAudio.start();
     DrAudio.enterScene("game");
     DrAudio.spinButtonPress();
+    DrAudio.spinTaunt();
     playSpin();
   });
 

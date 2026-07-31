@@ -23,6 +23,8 @@
       any single chain (CASCADE_AUDIO_CAP) — a 100-cascade bonus chain
       does not mean 100 sounds, it means a handful up front and then
       silence while the visuals keep going.
+    - Jester speech has its own cooldown and overlap guard so a second
+      taunt cannot talk over a line that is already playing.
     - No sound effect ever plays per-symbol across the whole 64-tile
       board, and explosions/fanfare are reserved for bonus/jackpot only,
       never fired per regular win.
@@ -129,11 +131,20 @@ const AudioManager = (() => {
     evil_laugh: { pool: ["cartoon-laugh", "laughevil1", "laughevil4", "laughevil11", "laughevil19", "laughevil24"] },
   };
 
-  // Jester voice lines — true placeholders. No TTS files exist yet; drop
-  // live/audio/voice/jester_01.mp3 .. jester_10.mp3 (deep/sinister voice,
-  // -3 semitones, ~40% reverb per the brief) and these start working with
-  // no code changes. Until then every call below is a silent no-op.
+  // Jester voice lines, in script order:
+  // 01 Spin if you dare.          06 The house trembles.
+  // 02 Feeling lucky?             07 Jackpot awaits.
+  // 03 Let's see what fate decides. 08 Risk brings reward.
+  // 04 Another chance.            09 Fortune favors the fearless.
+  // 05 The night is young.        10 Again. (whispered)
   const JESTER_KEYS = ["jester_01", "jester_02", "jester_03", "jester_04", "jester_05", "jester_06", "jester_07", "jester_08", "jester_09", "jester_10"];
+  const JESTER = {
+    spin: ["jester_01", "jester_02", "jester_03"],
+    loss: ["jester_04", "jester_10"],
+    bonus: ["jester_05", "jester_06"],
+    bigWin: ["jester_08", "jester_09"],
+    jackpot: ["jester_07"],
+  };
 
   // ---- Core engine ------------------------------------------------------
 
@@ -174,14 +185,15 @@ const AudioManager = (() => {
   // connections. Once cached a file is never re-fetched.
   function preloadAll() {
     ensureCtx();
-    const names = allManifestNames();
+    const files = allManifestNames().map((name) => ({ dir: SFX_DIR, name }))
+      .concat(JESTER_KEYS.map((name) => ({ dir: VOICE_DIR, name })));
     const BATCH = 6;
     let i = 0;
     function next() {
-      const batch = names.slice(i, i + BATCH);
+      const batch = files.slice(i, i + BATCH);
       i += BATCH;
       if (batch.length === 0) return;
-      Promise.all(batch.map((n) => loadBuffer(SFX_DIR, n))).then(() => {
+      Promise.all(batch.map((file) => loadBuffer(file.dir, file.name))).then(() => {
         if ("requestIdleCallback" in window) requestIdleCallback(next, { timeout: 2000 });
         else setTimeout(next, 60);
       });
@@ -249,17 +261,49 @@ const AudioManager = (() => {
   }
 
   let lastJester = null;
-  function jesterLine(opts) {
+  let jesterBusyUntil = 0;
+  let lastJesterAt = 0;
+  const JESTER_COOLDOWN_MS = 6500;
+
+  function jesterLine(keys, opts) {
+    if (!Array.isArray(keys)) {
+      opts = keys || {};
+      keys = JESTER_KEYS;
+    }
+    opts = opts || {};
+    const now = Date.now();
+    if (!opts.force && (now < jesterBusyUntil || now - lastJesterAt < JESTER_COOLDOWN_MS)) {
+      return Promise.resolve(null);
+    }
     let key;
     do {
-      key = JESTER_KEYS[Math.floor(Math.random() * JESTER_KEYS.length)];
-    } while (key === lastJester && JESTER_KEYS.length > 1);
+      key = keys[Math.floor(Math.random() * keys.length)];
+    } while (key === lastJester && keys.length > 1);
     lastJester = key;
-    return playVoice(key, opts);
+    lastJesterAt = now;
+    return loadBuffer(VOICE_DIR, key).then((buffer) => {
+      if (!buffer) return null;
+      jesterBusyUntil = Date.now() + Math.ceil(buffer.duration * 1000) + 300;
+      return playBuffer(buffer, Object.assign({ bus: sfxBus, gain: 0.85 }, opts));
+    });
   }
 
-  function maybeVoiceLine(chance) {
-    if (Math.random() < chance) jesterLine();
+  function maybeVoiceLine(chance, keys, opts) {
+    if (Math.random() < chance) jesterLine(keys, opts);
+  }
+
+  function spinTaunt() {
+    maybeVoiceLine(0.18, JESTER.spin, { gain: 0.78, delay: 0.08 });
+  }
+
+  function spinResult(winAmount, bet) {
+    const win = Number(winAmount) || 0;
+    const stake = Math.max(Number(bet) || 0, 0.1);
+    if (win <= 0) {
+      maybeVoiceLine(0.22, JESTER.loss, { gain: 0.72 });
+    } else if (win >= stake * 10) {
+      maybeVoiceLine(0.45, JESTER.bigWin, { gain: 0.86 });
+    }
   }
 
   function startLoop(manifestKey, opts) {
@@ -590,7 +634,7 @@ const AudioManager = (() => {
     play(tierKey, { gain: 0.55 + build * 0.5, rate: 1 + build * 0.25 });
     play("coin_drop", { gain: 0.3, delay: 0.07 });
     if (idx >= 2) play("electric_small", { gain: 0.18 + build, rate: 1 + build * 0.5, delay: 0.05 });
-    if (tierKey === "huge_win") maybeVoiceLine(0.25);
+    if (tierKey === "huge_win") maybeVoiceLine(0.3, JESTER.bigWin, { gain: 0.86 });
   }
 
   function cascadeSlam(comboIndex) {
@@ -628,7 +672,7 @@ const AudioManager = (() => {
       { key: "explosion_large", gain: 0.7, delay: 0.9, stopAt: 2.2 },
     ]);
     setTimeout(() => play("bonus_enter", { gain: 0.55 }), 1100);
-    maybeVoiceLine(0.3);
+    setTimeout(() => jesterLine(JESTER.bonus, { gain: 0.88 }), 350);
   }
 
   let jackpotActive = false;
@@ -647,7 +691,7 @@ const AudioManager = (() => {
       stopLoop(loopToken, 0.2);
       play("jackpot_finish", { gain: 0.85 });
       play("coin_explosion", { gain: 0.4, delay: 0.2 });
-      jesterLine();
+      jesterLine(JESTER.jackpot, { gain: 0.95, force: true });
     }, 1800);
     setTimeout(() => { jackpotActive = false; }, 8000);
   }
@@ -702,7 +746,7 @@ const AudioManager = (() => {
     reelStart, reelStop, symbolsLanded,
     winHit, cascadeSlam, multiplierHit,
     bonusTrigger, jackpot,
-    jesterLine, maybeVoiceLine,
+    jesterLine, maybeVoiceLine, spinTaunt, spinResult,
   };
 })();
 

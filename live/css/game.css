@@ -875,14 +875,92 @@ html, body {
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  background-size: cover;
+  background-color: #02050a;
+  background-size: 100% 100%;
   background-position: center;
+  background-repeat: no-repeat;
   text-align: center;
-  z-index: 20;
+  z-index: 55;
   border-radius: inherit;
+  overflow: hidden;
 }
 
 .bonus-overlay.show { display: flex; }
+
+.bonus-intro {
+  background-image: url('../images/dash.screens/bonus-spins-blue.jpg');
+}
+
+.bonus-intro.show {
+  animation: bonusIntroHold 6s ease-in-out both;
+}
+
+@keyframes bonusIntroHold {
+  0% { opacity: 0; transform: scale(1.025); }
+  8% { opacity: 1; transform: scale(1); }
+  90% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.015); }
+}
+
+.bonus-intro-status {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 13%;
+  padding: 7px 8px;
+  border: 1px solid rgba(135, 220, 255, 0.8);
+  border-radius: 8px;
+  background: rgba(2, 8, 20, 0.82);
+  box-shadow: 0 0 20px rgba(47, 195, 255, 0.65);
+  color: #eaffff;
+  text-shadow: 0 0 10px #2fc3ff;
+}
+
+.bonus-intro-status span {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.bonus-intro-status strong {
+  color: #fff;
+  font-size: 1.15rem;
+}
+
+.bonus-intro-status small {
+  display: block;
+  margin-top: 2px;
+  color: #9fdcff;
+  font-size: 0.55rem;
+}
+
+.bonus-game,
+.bonus-end {
+  background-image: url('../images/dash.screens/bonus-game-blue.jpg');
+}
+
+.bonus-game.show {
+  animation: bonusGameReveal 0.65s ease-out both;
+}
+
+@keyframes bonusGameReveal {
+  from { opacity: 0; filter: brightness(1.8) saturate(1.4); }
+  to { opacity: 1; filter: brightness(1) saturate(1); }
+}
+
+.bonus-round-title {
+  position: absolute;
+  top: 30.5%;
+  left: 25%;
+  right: 25%;
+  z-index: 24;
+  color: #dff8ff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 8px #2fc3ff, 0 0 16px rgba(47, 195, 255, 0.8);
+}
 
 .bonus-overlay h2 {
   color: #4fa3ff;
@@ -917,14 +995,90 @@ html, body {
 
 .bonus-reel-window {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 27%;
-  height: 50%;
+  left: 25.5%;
+  right: 25.5%;
+  top: 34.2%;
+  height: 39.5%;
   display: flex;
   flex-direction: row;
-  gap: 1px;
+  gap: 0;
+  padding: 0.35%;
   overflow: hidden;
+  z-index: 21;
+  background: rgba(3, 7, 14, 0.64);
+  border: 1px solid rgba(130, 215, 255, 0.65);
+  box-shadow: 0 0 14px rgba(47, 195, 255, 0.55), inset 0 0 12px rgba(0, 0, 0, 0.75);
+}
+
+.bonus-reel-window .tile {
+  border-radius: 1px;
+  box-shadow: 0 0 3px rgba(100, 200, 255, 0.55), 0 0 0 1px rgba(160, 220, 255, 0.35) inset;
+}
+
+#bonusPlay .cascade-badge {
+  top: 31.8%;
+}
+
+#bonusPlay .heat-meter-wrap {
+  left: 26%;
+  right: 26%;
+  bottom: 24.7% !important;
+}
+
+#bonusPlay .hud {
+  left: 22%;
+  right: 22%;
+  bottom: 16.5% !important;
+  z-index: 24;
+  padding: 5px 3px;
+  border-radius: 7px;
+  background: rgba(2, 8, 18, 0.8);
+  border: 1px solid rgba(90, 180, 255, 0.45);
+}
+
+#bonusPlay .hud .hud-label {
+  font-size: 0.43rem;
+}
+
+#bonusPlay .hud .hud-value {
+  font-size: 0.62rem;
+}
+
+.bonus-end-panel {
+  position: absolute;
+  left: 24%;
+  right: 24%;
+  top: 34%;
+  min-height: 40%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 7px;
+  border-radius: 8px;
+  background: rgba(3, 7, 15, 0.82);
+  border: 1px solid rgba(130, 215, 255, 0.72);
+  box-shadow: 0 0 18px rgba(47, 195, 255, 0.62);
+}
+
+.bonus-end-panel p {
+  font-size: 0.62rem;
+}
+
+.bonus-end-panel .big {
+  font-size: 1.55rem;
+}
+
+.bonus-end-panel button {
+  margin: 5px 2px 0;
+  padding: 7px 8px;
+  font-size: 0.58rem;
+}
+
+body.bonus-active .control-bar,
+body.bonus-active .top-bar {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ---- Reduced-effects mode (manual toggle, mobile/low-power) ------------ */

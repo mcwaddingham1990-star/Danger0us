@@ -67,14 +67,15 @@
       <div class="headline" id="deathRideEventHeadline">BLUE JESTER DEATH RIDE</div>
     </div>
 
-    <div class="bonus-overlay" id="bonusAnnounce" style="background-image:url('images/dash.screens/bonus-spins-scroll.png');">
-      <h2>BONUS SPINS TRIGGERED</h2>
-      <p>Bonus symbols found: <span id="jesterCountText">0</span></p>
-      <p class="big" id="freeSpinsAwarded">0</p>
-      <p>FREE SPINS</p>
+    <div class="bonus-overlay bonus-intro" id="bonusAnnounce" aria-live="assertive">
+      <div class="bonus-intro-status">
+        <span><strong id="freeSpinsAwarded">0</strong> FREE SPINS</span>
+        <small><span id="jesterCountText">0</span> bonus symbols landed</small>
+      </div>
     </div>
 
-    <div class="bonus-overlay" id="bonusPlay" style="background-image:url('images/dash.screens/bonus-play-scroll.png');">
+    <div class="bonus-overlay bonus-game" id="bonusPlay">
+      <div class="bonus-round-title">DEATH RIDE BONUS</div>
       <div class="bonus-reel-window" id="bonusReelWindow"></div>
       <div class="cascade-badge" id="bonusCascadeBadge">×1</div>
       <div class="overdrive-flash" id="bonusOverdriveFlash"></div>
@@ -110,16 +111,18 @@
       </div>
     </div>
 
-    <div class="bonus-overlay" id="bonusEnd">
-      <h2>BONUS COMPLETE</h2>
-      <p>TOTAL FREE SPIN WINS</p>
-      <p class="big" id="endTotalWin">0</p>
-      <p>Biggest Cascade: <span id="endBiggestCascade">0</span> symbols</p>
-      <p>Highest Multiplier: <span id="endHighestMult">1x</span></p>
-      <p>Highest Level Reached: <span id="endDeathRideLevel">LEVEL 1</span></p>
-      <div>
-        <button id="btnPlayAgain">PLAY AGAIN</button>
-        <button id="btnReturnToGame">RETURN TO GAME</button>
+    <div class="bonus-overlay bonus-end" id="bonusEnd">
+      <div class="bonus-end-panel">
+        <h2>BONUS COMPLETE</h2>
+        <p>TOTAL FREE SPIN WINS</p>
+        <p class="big" id="endTotalWin">0</p>
+        <p>Biggest Cascade: <span id="endBiggestCascade">0</span> symbols</p>
+        <p>Highest Multiplier: <span id="endHighestMult">1x</span></p>
+        <p>Highest Level Reached: <span id="endDeathRideLevel">LEVEL 1</span></p>
+        <div>
+          <button id="btnPlayAgain">PLAY AGAIN</button>
+          <button id="btnReturnToGame">RETURN TO GAME</button>
+        </div>
       </div>
     </div>
   </div>

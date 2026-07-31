@@ -768,6 +768,33 @@ html, body {
   font-weight: 800;
 }
 
+.bet-input {
+  width: 62px;
+  min-width: 0;
+  padding: 3px 4px;
+  border: 1px solid rgba(100, 185, 255, 0.55);
+  border-radius: 6px;
+  outline: none;
+  background: rgba(2, 10, 24, 0.92);
+  color: #dff5ff !important;
+  text-align: center;
+  font: inherit;
+  font-weight: 800 !important;
+  box-shadow: inset 0 0 8px rgba(47, 125, 255, 0.25);
+  -moz-appearance: textfield;
+}
+
+.bet-input:focus {
+  border-color: #7fdcff;
+  box-shadow: 0 0 10px rgba(47, 195, 255, 0.7), inset 0 0 8px rgba(47, 125, 255, 0.25);
+}
+
+.bet-input::-webkit-outer-spin-button,
+.bet-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
 .ctrl-btn:active {
   filter: brightness(1.3);
 }

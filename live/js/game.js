@@ -63,7 +63,7 @@ if (player) {
     hudBet.textContent = bet.toFixed(1);
     hudCredits.textContent = formatCredits(player.credits);
     creditsTop.textContent = formatCredits(player.credits) + " cr";
-    if (betVal) betVal.textContent = bet.toFixed(1);
+    if (betVal && document.activeElement !== betVal) betVal.value = bet.toFixed(1);
   }
 
   // ---- Cell rendering --------------------------------------------------
@@ -841,6 +841,36 @@ if (player) {
   function setBet(v) {
     bet = roundBet(Math.max(MIN_BET, Math.min(MAX_BET, v)));
     refreshHud();
+  }
+
+  function commitTypedBet() {
+    if (!betVal) return;
+    const typed = Number.parseFloat(betVal.value);
+    setBet(Number.isFinite(typed) ? typed : bet);
+    betVal.value = bet.toFixed(1);
+  }
+
+  if (betVal) {
+    betVal.addEventListener("focus", () => betVal.select());
+    betVal.addEventListener("input", () => {
+      if (isSpinning) {
+        betVal.value = bet.toFixed(1);
+        return;
+      }
+      const typed = Number.parseFloat(betVal.value);
+      if (!Number.isFinite(typed) || typed < MIN_BET || typed > MAX_BET) return;
+      bet = roundBet(typed);
+      hudBet.textContent = bet.toFixed(1);
+    });
+    betVal.addEventListener("change", commitTypedBet);
+    betVal.addEventListener("blur", commitTypedBet);
+    betVal.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        betVal.blur();
+      }
+    });
+    betVal.addEventListener("wheel", () => betVal.blur(), { passive: true });
   }
 
   document.getElementById("btnMinBetFloat").addEventListener("click", () => {

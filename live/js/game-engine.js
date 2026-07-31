@@ -333,6 +333,64 @@ function suppressClusters(grid, cols, rows, minSize) {
   }
 }
 
+function ensurePayingCluster(grid, cols, rows, minSize) {
+  if (findClusters(grid, cols, rows, minSize).length > 0) return;
+  const family = FAMILIES[Math.floor(Math.random() * FAMILIES.length)];
+
+  // Prefer a contiguous row segment with no bonus scatters so forcing a
+  // normal win never erases the separately rolled bonus-round trigger.
+  for (let r = 0; r < rows; r++) {
+    for (let start = 0; start <= cols - minSize; start++) {
+      let clear = true;
+      for (let c = start; c < start + minSize; c++) {
+        if (grid[r][c] && grid[r][c].kind === "bonus") {
+          clear = false;
+          break;
+        }
+      }
+      if (!clear) continue;
+      for (let c = start; c < start + minSize; c++) {
+        grid[r][c] = { kind: "symbol", family: family.id, color: "plain" };
+      }
+      return;
+    }
+  }
+
+  // Defensive fallback for an unusually scatter-heavy board.
+  for (let i = 0; i < minSize; i++) {
+    grid[Math.floor(i / cols)][i % cols] = { kind: "symbol", family: family.id, color: "plain" };
+  }
+}
+
+function enforceBonusTriggerRate(grid, cols, rows, bonusRate) {
+  const triggerCount = BONUS_TRIGGER[0].count;
+  const shouldTrigger = Math.random() * 100 < Math.max(0, Math.min(100, bonusRate));
+  const bonusCells = [];
+  const otherCells = [];
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c] && grid[r][c].kind === "bonus") bonusCells.push([r, c]);
+      else otherCells.push([r, c]);
+    }
+  }
+
+  if (shouldTrigger) {
+    while (bonusCells.length < triggerCount && otherCells.length) {
+      const index = Math.floor(Math.random() * otherCells.length);
+      const [r, c] = otherCells.splice(index, 1)[0];
+      grid[r][c] = { kind: "bonus" };
+      bonusCells.push([r, c]);
+    }
+  } else {
+    while (bonusCells.length >= triggerCount) {
+      const [r, c] = bonusCells.pop();
+      const family = FAMILIES[Math.floor(Math.random() * FAMILIES.length)];
+      grid[r][c] = { kind: "symbol", family: family.id, color: "plain" };
+    }
+  }
+}
+
 function countBonusSymbols(grid, cols, rows) {
   let count = 0;
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (isBonus(grid[r][c])) count++;
@@ -439,7 +497,22 @@ function resolveSpin(cols, rows, settings, betAmount, options) {
     }
   }
 
-  if ((settings.winProbability || 0) <= 0) {
+  if (!bonusMode) {
+    enforceBonusTriggerRate(
+      grid,
+      cols,
+      rows,
+      settings.bonusRate != null ? settings.bonusRate : DEFAULT_BONUS_RATE
+    );
+  }
+
+  // Apply the normal-win gate after the bonus-symbol gate so inserting
+  // guaranteed scatters cannot accidentally break a guaranteed cluster.
+  const winProbability = Math.max(0, Math.min(100, Number(settings.winProbability) || 0));
+  const shouldWin = Math.random() * 100 < winProbability;
+  if (shouldWin) {
+    ensurePayingCluster(grid, cols, rows, minSize);
+  } else {
     suppressClusters(grid, cols, rows, minSize);
   }
 

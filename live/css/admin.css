@@ -225,6 +225,88 @@
   accent-color: #2f7dff;
 }
 
+.probability-open-btn,
+.probability-save-btn,
+.probability-cancel-btn {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 9px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.probability-open-btn,
+.probability-save-btn {
+  border: 1px solid rgba(100, 195, 255, 0.7);
+  background: linear-gradient(180deg, #2f7dff, #1454c9);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(47, 125, 255, 0.35);
+}
+
+.probability-settings-panel {
+  margin: 10px 0 16px;
+  padding: 12px;
+  border: 1px solid rgba(120, 200, 255, 0.48);
+  border-radius: 10px;
+  background: rgba(0, 7, 20, 0.78);
+  box-shadow: inset 0 0 20px rgba(30, 100, 190, 0.12);
+}
+
+.probability-settings-panel[hidden],
+.blue-only-setting[hidden] {
+  display: none;
+}
+
+.probability-game-label {
+  display: block;
+  margin-bottom: 5px;
+  color: #9db6d8;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.probability-game-select {
+  width: 100%;
+  margin-bottom: 7px;
+  padding: 9px 10px;
+  border: 1px solid rgba(120, 190, 255, 0.5);
+  border-radius: 8px;
+  background: #061228;
+  color: #e8f4ff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.probability-scope-note {
+  margin-bottom: 14px;
+  color: #80bfff;
+  font-size: 0.66rem;
+  line-height: 1.4;
+}
+
+.probability-save-status {
+  min-height: 18px;
+  margin: 2px 0 5px;
+  color: #a9f0c0;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.probability-cancel-btn {
+  margin-top: 7px;
+  border: 1px solid rgba(120, 170, 230, 0.35);
+  background: transparent;
+  color: #aabbd2;
+}
+
+.probability-save-btn:disabled,
+.probability-cancel-btn:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .feedback-item {
   background: rgba(0, 8, 20, 0.55);
   border: 1px solid rgba(120, 170, 230, 0.25);

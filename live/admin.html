@@ -22,23 +22,45 @@
     <div class="section-label">Player Feedback &amp; Bug Reports</div>
     <div id="feedbackList"></div>
 
-    <div class="section-label">Global Game Settings (default for all players)</div>
+    <div class="section-label">Game Probability Controls</div>
+    <button type="button" class="probability-open-btn" id="openProbabilitySettingsBtn">
+      Open Probability Settings
+    </button>
 
-    <div class="setting-row">
-      <label>Win Probability (Blue Diamonds &amp; Red Devil) <span class="val" id="valWinProb">35%</span></label>
-      <input type="range" id="winProbability" min="0" max="100" value="35">
-    </div>
-    <div class="setting-row">
-      <label>Joker Appearance Rate (Blue Diamonds &amp; Red Devil) <span class="val" id="valJester">8%</span></label>
-      <input type="range" id="jesterRate" min="0" max="100" value="8">
-    </div>
-    <div class="setting-row">
-      <label>Bonus Spin Trigger Rate (Blue Diamonds) <span class="val" id="valBonusRate">14%</span></label>
-      <input type="range" id="bonusRate" min="0" max="100" value="14">
-    </div>
-    <div class="setting-row">
-      <label>Cluster Size Requirement (Blue Diamonds, min 5) <span class="val" id="valCluster">5</span></label>
-      <input type="range" id="clusterMin" min="5" max="10" value="5">
+    <div class="probability-settings-panel" id="probabilitySettingsPanel" hidden>
+      <label class="probability-game-label" for="probabilityGameScope">Adjust settings for</label>
+      <select id="probabilityGameScope" class="probability-game-select">
+        <option value="blue">Blue Diamonds</option>
+        <option value="red">Red Devil</option>
+        <option value="global">All Games</option>
+      </select>
+
+      <div class="probability-scope-note" id="probabilityScopeNote"></div>
+
+      <div class="setting-row">
+        <label>Win Probability <span class="val" id="valWinProb">10%</span></label>
+        <input type="range" id="winProbability" min="0" max="100" value="10">
+      </div>
+      <div class="setting-row">
+        <label>Joker Appearance Rate <span class="val" id="valJester">3%</span></label>
+        <input type="range" id="jesterRate" min="0" max="100" value="3">
+      </div>
+      <div class="setting-row blue-only-setting" id="bonusRateRow">
+        <label>Bonus Spin Trigger Rate <span class="val" id="valBonusRate">14%</span></label>
+        <input type="range" id="bonusRate" min="0" max="100" value="14">
+      </div>
+      <div class="setting-row blue-only-setting" id="clusterMinRow">
+        <label>Cluster Size Requirement <span class="val" id="valCluster">5</span></label>
+        <input type="range" id="clusterMin" min="5" max="10" value="5">
+      </div>
+
+      <div class="probability-save-status" id="probabilitySaveStatus" role="status"></div>
+      <button type="button" class="probability-save-btn" id="saveProbabilitySettingsBtn">
+        Save Probability Settings
+      </button>
+      <button type="button" class="probability-cancel-btn" id="cancelProbabilitySettingsBtn">
+        Cancel Without Saving
+      </button>
     </div>
 
     <button class="btn-secondary" id="viewAsPlayerBtn" style="margin-top: 10px;">View as Player</button>
@@ -288,16 +310,98 @@
     });
   }
 
-  async function bindSetting(id, valId, suffix, key, isInt) {
-    const input = document.getElementById(id);
-    const valEl = document.getElementById(valId);
-    const settings = await drGetSettings();
-    input.value = settings[key];
-    valEl.textContent = settings[key] + suffix;
-    input.addEventListener("input", () => {
-      const v = isInt ? parseInt(input.value, 10) : Number(input.value);
-      valEl.textContent = v + suffix;
-      drSaveSettings({ [key]: v });
+  const PROBABILITY_CONTROLS = [
+    { id: "winProbability", valId: "valWinProb", key: "winProbability", suffix: "%" },
+    { id: "jesterRate", valId: "valJester", key: "jesterRate", suffix: "%" },
+    { id: "bonusRate", valId: "valBonusRate", key: "bonusRate", suffix: "%" },
+    { id: "clusterMin", valId: "valCluster", key: "clusterMin", suffix: "" },
+  ];
+
+  function updateProbabilityValueLabels() {
+    PROBABILITY_CONTROLS.forEach((control) => {
+      const input = document.getElementById(control.id);
+      document.getElementById(control.valId).textContent = input.value + control.suffix;
+    });
+  }
+
+  async function loadProbabilitySettings() {
+    const scope = document.getElementById("probabilityGameScope").value;
+    const settings = await drGetSettings(scope);
+    PROBABILITY_CONTROLS.forEach((control) => {
+      document.getElementById(control.id).value = settings[control.key];
+    });
+
+    const redOnly = scope === "red";
+    document.getElementById("bonusRateRow").hidden = redOnly;
+    document.getElementById("clusterMinRow").hidden = redOnly;
+    document.getElementById("probabilityScopeNote").textContent =
+      scope === "blue"
+        ? "These values affect Blue Diamonds only."
+        : scope === "red"
+          ? "These values affect Red Devil only. Its bonus is driven by the Joker rate."
+          : "Saving here applies the displayed values to both games.";
+    document.getElementById("probabilitySaveStatus").textContent = "";
+    updateProbabilityValueLabels();
+  }
+
+  function initProbabilitySettings() {
+    const panel = document.getElementById("probabilitySettingsPanel");
+    const openBtn = document.getElementById("openProbabilitySettingsBtn");
+    const saveBtn = document.getElementById("saveProbabilitySettingsBtn");
+    const cancelBtn = document.getElementById("cancelProbabilitySettingsBtn");
+    const scopeSelect = document.getElementById("probabilityGameScope");
+    const status = document.getElementById("probabilitySaveStatus");
+
+    PROBABILITY_CONTROLS.forEach((control) => {
+      document.getElementById(control.id).addEventListener("input", updateProbabilityValueLabels);
+    });
+
+    openBtn.addEventListener("click", async () => {
+      openBtn.disabled = true;
+      await loadProbabilitySettings();
+      panel.hidden = false;
+      openBtn.hidden = true;
+      openBtn.disabled = false;
+      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+
+    scopeSelect.addEventListener("change", loadProbabilitySettings);
+
+    cancelBtn.addEventListener("click", () => {
+      panel.hidden = true;
+      openBtn.hidden = false;
+      status.textContent = "";
+    });
+
+    saveBtn.addEventListener("click", async () => {
+      const scope = scopeSelect.value;
+      const partial = {
+        winProbability: parseInt(document.getElementById("winProbability").value, 10),
+        jesterRate: parseInt(document.getElementById("jesterRate").value, 10),
+      };
+      if (scope !== "red") {
+        partial.bonusRate = parseInt(document.getElementById("bonusRate").value, 10);
+        partial.clusterMin = parseInt(document.getElementById("clusterMin").value, 10);
+      }
+
+      saveBtn.disabled = true;
+      cancelBtn.disabled = true;
+      scopeSelect.disabled = true;
+      status.textContent = "Saving…";
+      try {
+        await drSaveSettings(partial, scope);
+        status.textContent = "Saved successfully.";
+        await new Promise((resolve) => setTimeout(resolve, 650));
+        panel.hidden = true;
+        openBtn.hidden = false;
+      } catch (error) {
+        console.error("Could not save probability settings", error);
+        status.textContent = "Save failed. Please try again.";
+      } finally {
+        saveBtn.disabled = false;
+        cancelBtn.disabled = false;
+        scopeSelect.disabled = false;
+      }
     });
   }
 
@@ -313,10 +417,7 @@
     await renderPlayers();
     await renderReferrals();
     await renderFeedback();
-    bindSetting("winProbability", "valWinProb", "%", "winProbability", true);
-    bindSetting("jesterRate", "valJester", "%", "jesterRate", true);
-    bindSetting("bonusRate", "valBonusRate", "%", "bonusRate", true);
-    bindSetting("clusterMin", "valCluster", "", "clusterMin", true);
+    initProbabilitySettings();
   })();
 
   document.getElementById("signOutBtn").addEventListener("click", async () => {

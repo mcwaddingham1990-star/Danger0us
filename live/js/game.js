@@ -695,7 +695,7 @@ if (player) {
       spinsLeft--;
       document.getElementById("bonusSpinsLeft").textContent = spinsLeft;
 
-      const settings = await drGetEffectiveSettings(player);
+      const settings = await drGetEffectiveSettings(player, "blue");
       const result = resolveSpin(BONUS_COLS, BONUS_ROWS, settings, lockedBet, {
         bonusMode: true,
         startingCascadeMultiplier: cascadeMultiplier,
@@ -775,7 +775,7 @@ if (player) {
     isSpinning = true;
     document.getElementById("btnSpinFloat").classList.add("disabled");
 
-    const settings = await drGetEffectiveSettings(player);
+    const settings = await drGetEffectiveSettings(player, "blue");
     const c = cols();
     const r = rows();
 

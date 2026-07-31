@@ -69,6 +69,16 @@ function suppressLineWins(grid, cols, rows) {
   }
 }
 
+function ensureLineWin(grid, cols, rows) {
+  if (evaluateLines(grid, cols, rows).length > 0) return;
+  const line = PAYLINES[0].slice(0, cols);
+  const symbol = SYMBOL_SET.find((s) => !s.isWild);
+  if (!line || !symbol) return;
+  for (let c = 0; c < Math.min(3, cols); c++) {
+    grid[line[c]][c] = symbol.id;
+  }
+}
+
 function countWilds(grid, cols, rows) {
   let count = 0;
   for (let r = 0; r < rows; r++) {
@@ -151,7 +161,10 @@ function resolveSpin(cols, rows, settings, options) {
   const hellfireMultiplier = options.hellfireMultiplier || 1;
 
   const grid = generateGrid(cols, rows, settings);
-  if ((settings.winProbability || 0) <= 0) {
+  const winProbability = Math.max(0, Math.min(100, Number(settings.winProbability) || 0));
+  if (Math.random() * 100 < winProbability) {
+    ensureLineWin(grid, cols, rows);
+  } else {
     suppressLineWins(grid, cols, rows);
   }
   const wins = evaluateLines(grid, cols, rows);

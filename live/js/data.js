@@ -240,20 +240,41 @@ async function drAddBonusCredits(uid, amount, note) {
   });
 }
 
-async function drGetSettings() {
-  const doc = await drDb.collection("settings").doc("global").get();
-  return Object.assign({}, DEFAULT_SETTINGS, doc.exists ? doc.data() : {});
+function drSettingsScope(scope) {
+  return scope === "blue" || scope === "red" ? scope : "global";
 }
 
-async function drSaveSettings(partial) {
-  await drDb.collection("settings").doc("global").set(partial, { merge: true });
-  return drGetSettings();
+async function drGetSettings(scope) {
+  const docId = drSettingsScope(scope);
+  const globalDoc = await drDb.collection("settings").doc("global").get();
+  const globalSettings = Object.assign({}, DEFAULT_SETTINGS, globalDoc.exists ? globalDoc.data() : {});
+  if (docId === "global") return globalSettings;
+
+  const gameDoc = await drDb.collection("settings").doc(docId).get();
+  return Object.assign({}, globalSettings, gameDoc.exists ? gameDoc.data() : {});
 }
 
-// Global settings with this specific player's overrides layered on top —
-// what the game engine should actually use when resolving that player's spins.
-async function drGetEffectiveSettings(player) {
-  const global = await drGetSettings();
+async function drSaveSettings(partial, scope) {
+  const docId = drSettingsScope(scope);
+  if (docId === "global") {
+    // "All Games" is a concrete save to all three documents. That keeps
+    // existing Blue/Red overrides from silently defeating an all-games
+    // adjustment made by the admin.
+    const batch = drDb.batch();
+    ["global", "blue", "red"].forEach((id) => {
+      batch.set(drDb.collection("settings").doc(id), partial, { merge: true });
+    });
+    await batch.commit();
+  } else {
+    await drDb.collection("settings").doc(docId).set(partial, { merge: true });
+  }
+  return drGetSettings(docId);
+}
+
+// Selected game's saved settings with this specific player's overrides
+// layered on top — what the game engine actually uses for each spin.
+async function drGetEffectiveSettings(player, game) {
+  const global = await drGetSettings(game);
   const override = (player && player.settingsOverride) || {};
   return Object.assign({}, global, override);
 }

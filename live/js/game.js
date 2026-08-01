@@ -803,6 +803,10 @@ if (player) {
 
     const freeSpinsAwarded = result.bonusSymbolSpinsAwarded;
     if (freeSpinsAwarded > 0) {
+      if (result.jackpotTriggered) {
+        showWinFlash("JACKPOT — 12 DEATH RIDE SPINS", "bonus");
+        DrAudio.jackpot();
+      }
       await runBonus(freeSpinsAwarded, result.bonusCountInitial, bet);
     }
 

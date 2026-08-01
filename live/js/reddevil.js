@@ -405,7 +405,7 @@ if (player) {
       }
 
       const settings = await drGetEffectiveSettings(player, "red");
-      const result = resolveSpin(BONUS_COLS, BONUS_ROWS, settings, { hellfireMultiplier });
+      const result = resolveSpin(BONUS_COLS, BONUS_ROWS, settings, { hellfireMultiplier, bonusMode: true });
 
       await spinReveal(bonusReelWindow, BONUS_COLS, BONUS_ROWS, result.grid);
       await sleep(200);
@@ -467,6 +467,10 @@ if (player) {
 
     const spinsAwarded = hellfireSpinsForWildCount(result.wildCount);
     if (spinsAwarded > 0) {
+      if (result.jackpotTriggered) {
+        showWinFlash("JACKPOT — 15 HELLFIRE SPINS", "bonus");
+        DrAudio.jackpot();
+      }
       // Hellfire is settled straight away; gamble only applies to
       // ordinary base-game line wins, not the bonus trigger itself.
       settleStats(bet, winAmount);

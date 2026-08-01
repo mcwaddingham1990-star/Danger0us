@@ -89,6 +89,23 @@ function countWilds(grid, cols, rows) {
   return count;
 }
 
+function ensureWildCount(grid, cols, rows, targetCount) {
+  const nonWildCells = [];
+  let wildCount = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if ((symbolById(grid[r][c]) || {}).isWild) wildCount++;
+      else nonWildCells.push([r, c]);
+    }
+  }
+  while (wildCount < targetCount && nonWildCells.length) {
+    const index = Math.floor(Math.random() * nonWildCells.length);
+    const [r, c] = nonWildCells.splice(index, 1)[0];
+    grid[r][c] = "jester";
+    wildCount++;
+  }
+}
+
 /*
   Evaluates all PAYLINES against a static grid (no cascades in Red
   Devil). A line pays when reels 1-3 (or all 4) match the same symbol
@@ -167,6 +184,12 @@ function resolveSpin(cols, rows, settings, options) {
   } else {
     suppressLineWins(grid, cols, rows);
   }
+  const bonusMode = !!options.bonusMode;
+  const bonusRate = Math.max(0, Math.min(100, Number(settings.bonusRate) || 0));
+  const jackpotRate = Math.max(0, Math.min(100, Number(settings.jackpotRate) || 0));
+  const jackpotTriggered = !bonusMode && Math.random() * 100 < jackpotRate;
+  const bonusTriggered = !bonusMode && (jackpotTriggered || Math.random() * 100 < bonusRate);
+  if (bonusTriggered) ensureWildCount(grid, cols, rows, jackpotTriggered ? 6 : 3);
   const wins = evaluateLines(grid, cols, rows);
   const wildCount = countWilds(grid, cols, rows);
 
@@ -177,5 +200,5 @@ function resolveSpin(cols, rows, settings, options) {
     biggestRun = Math.max(biggestRun, w.runLength);
   });
 
-  return { grid, wins, wildCount, totalMultiplierUnits, biggestRun };
+  return { grid, wins, wildCount, totalMultiplierUnits, biggestRun, bonusTriggered, jackpotTriggered };
 }

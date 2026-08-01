@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS = {
   winProbability: 10,      // 0-100, chance-weighted RNG favors clusters forming
   jesterRate: 3,           // 0-100, how often Joker/wild symbols appear
   bonusRate: 14,           // 0-100, how often the Bonus/scatter symbol appears (drives free-spin trigger frequency)
+  jackpotRate: 1,          // 0-100, chance of the game's top-tier jackpot event
   clusterMin: 5,           // minimum touching symbols to pay (Blue Diamonds floors this at 5 regardless)
 };
 

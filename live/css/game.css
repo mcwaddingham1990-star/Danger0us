@@ -1029,7 +1029,10 @@ html, body {
   display: flex;
   flex-direction: row;
   gap: 0;
-  padding: 0.35%;
+  /* The scroll artwork already defines the exact play-area boundary.
+     Any inner padding shrinks and offsets the 10x10 tile matrix from
+     those baked-in lines, especially on narrow mobile screens. */
+  padding: 0;
   overflow: hidden;
   z-index: 21;
   background: rgba(3, 7, 14, 0.64);

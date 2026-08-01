@@ -22,17 +22,12 @@
     <div class="section-label">Player Feedback &amp; Bug Reports</div>
     <div id="feedbackList"></div>
 
-    <div class="section-label">Game Probability Controls</div>
-    <button type="button" class="probability-open-btn" id="openProbabilitySettingsBtn">
-      Open Probability Settings
-    </button>
-
     <div class="probability-settings-panel" id="probabilitySettingsPanel" hidden>
       <button type="button" class="probability-modal-close" id="closeProbabilitySettingsBtn" aria-label="Close">×</button>
       <h2 class="probability-modal-title">Probability Settings</h2>
       <label class="probability-game-label" for="probabilityTargetScope">Apply settings to</label>
       <select id="probabilityTargetScope" class="probability-game-select">
-        <option value="all">All Players</option>
+        <option value="all" selected>Everyone — All Current &amp; Future Players</option>
         <option value="player">One Individual Player</option>
       </select>
 
@@ -84,6 +79,10 @@
     </div>
     <div class="probability-modal-backdrop" id="probabilityModalBackdrop" hidden></div>
 
+    <div class="section-label probability-actions-label">Game Probability Controls</div>
+    <button type="button" class="probability-open-btn" id="openProbabilitySettingsBtn">
+      Open Probability Settings for Everyone or One Player
+    </button>
     <button class="btn-secondary" id="viewAsPlayerBtn" style="margin-top: 10px;">View as Player</button>
     <button class="btn-secondary" id="signOutBtn" style="margin-top: 10px;">Sign Out</button>
   </div>
@@ -403,6 +402,12 @@
     });
 
     async function openSettings(requestedUid, requestedScope) {
+      const openingForPlayer = Boolean(requestedUid);
+      targetSelect.value = openingForPlayer ? "player" : "all";
+      playerPicker.hidden = !openingForPlayer;
+      resetBtn.hidden = !openingForPlayer;
+      saveBtn.disabled = false;
+      if (!openingForPlayer) playerSelect.value = "";
       panel.hidden = false;
       backdrop.hidden = false;
       openBtn.hidden = true;
@@ -415,10 +420,7 @@
           .sort((a, b) => String(a.email).localeCompare(String(b.email)))
           .map((p) => `<option value="${p.id}">${escapeHtml(p.email)}</option>`)
           .join("");
-        if (requestedUid) {
-          targetSelect.value = "player";
-          playerPicker.hidden = false;
-          resetBtn.hidden = false;
+        if (openingForPlayer) {
           playerSelect.value = requestedUid;
         }
         if (requestedScope) scopeSelect.value = requestedScope;

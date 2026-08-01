@@ -391,6 +391,23 @@ function enforceBonusTriggerRate(grid, cols, rows, bonusRate) {
   }
 }
 
+function forceBonusSymbolCount(grid, cols, rows, targetCount) {
+  const bonusCells = [];
+  const otherCells = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (isBonus(grid[r][c])) bonusCells.push([r, c]);
+      else otherCells.push([r, c]);
+    }
+  }
+  while (bonusCells.length < targetCount && otherCells.length) {
+    const index = Math.floor(Math.random() * otherCells.length);
+    const [r, c] = otherCells.splice(index, 1)[0];
+    grid[r][c] = { kind: "bonus" };
+    bonusCells.push([r, c]);
+  }
+}
+
 function countBonusSymbols(grid, cols, rows) {
   let count = 0;
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (isBonus(grid[r][c])) count++;
@@ -505,6 +522,14 @@ function resolveSpin(cols, rows, settings, betAmount, options) {
       settings.bonusRate != null ? settings.bonusRate : DEFAULT_BONUS_RATE
     );
   }
+
+  // A Blue jackpot is the highest base-game free-spin trigger: five
+  // Bonus symbols and the full 12-spin award. It uses the same visible
+  // symbols and payout path as an organic trigger, so the admin dial
+  // changes real game behavior rather than merely changing animation.
+  const jackpotRate = Math.max(0, Math.min(100, Number(settings.jackpotRate) || 0));
+  const jackpotTriggered = !bonusMode && Math.random() * 100 < jackpotRate;
+  if (jackpotTriggered) forceBonusSymbolCount(grid, cols, rows, 5);
 
   // Apply the normal-win gate after the bonus-symbol gate so inserting
   // guaranteed scatters cannot accidentally break a guaranteed cluster.
@@ -628,6 +653,7 @@ function resolveSpin(cols, rows, settings, betAmount, options) {
     fullGridInferno,
     anyChainReaction,
     anyBlueJesterDeathRide,
+    jackpotTriggered,
     takeover,
     deathRideLevel: bonusMode ? deathRideLevelFor(cascadeMultiplier) : null,
   };

@@ -28,6 +28,8 @@
     </button>
 
     <div class="probability-settings-panel" id="probabilitySettingsPanel" hidden>
+      <button type="button" class="probability-modal-close" id="closeProbabilitySettingsBtn" aria-label="Close">×</button>
+      <h2 class="probability-modal-title">Probability Settings</h2>
       <label class="probability-game-label" for="probabilityTargetScope">Apply settings to</label>
       <select id="probabilityTargetScope" class="probability-game-select">
         <option value="all">All Players</option>
@@ -57,8 +59,12 @@
         <input type="range" id="jesterRate" min="0" max="100" value="3">
       </div>
       <div class="setting-row blue-only-setting" id="bonusRateRow">
-        <label>Bonus Spin Trigger Rate <span class="val" id="valBonusRate">14%</span></label>
+        <label>Bonus Round Trigger Rate <span class="val" id="valBonusRate">14%</span></label>
         <input type="range" id="bonusRate" min="0" max="100" value="14">
+      </div>
+      <div class="setting-row">
+        <label>Jackpot Event Rate <span class="val" id="valJackpotRate">1%</span></label>
+        <input type="range" id="jackpotRate" min="0" max="100" value="1">
       </div>
       <div class="setting-row blue-only-setting" id="clusterMinRow">
         <label>Cluster Size Requirement <span class="val" id="valCluster">5</span></label>
@@ -76,6 +82,7 @@
         Reset This Player to Standard Settings
       </button>
     </div>
+    <div class="probability-modal-backdrop" id="probabilityModalBackdrop" hidden></div>
 
     <button class="btn-secondary" id="viewAsPlayerBtn" style="margin-top: 10px;">View as Player</button>
     <button class="btn-secondary" id="signOutBtn" style="margin-top: 10px;">Sign Out</button>
@@ -93,10 +100,11 @@
 <script>
   async function renderPlayers() {
     const list = document.getElementById("playerList");
-    const [allPlayers, allRedemptions] = await Promise.all([
-      drGetPlayers(), drGetRedemptions(),
+    const [allPlayers, allRedemptions, globalSettings, blueSettings, redSettings] = await Promise.all([
+      drGetPlayers(), drGetRedemptions(), drGetSettings("global"), drGetSettings("blue"), drGetSettings("red"),
     ]);
     const players = allPlayers;
+    const settingsByScope = { global: globalSettings, blue: blueSettings, red: redSettings };
 
     if (players.length === 0) {
       list.innerHTML = '<div class="player-row">No players yet.</div>';
@@ -132,6 +140,20 @@
             ${p.role === "admin" ? '<span class="approval-badge approved">You (Admin)</span>' : ""}
             <span class="approval-badge ${approved ? "approved" : "pending"}">${approved ? "Approved" : "Pending"}</span>
           </div>
+          ${p.role === "admin" ? "" : `
+            <div class="roster-probability-control">
+              <label>Individual Win Probability <span class="rosterWinValue"></span></label>
+              <select class="rosterGameScope probability-game-select" aria-label="Game for ${escapeHtml(p.email)}">
+                <option value="global">Both Games</option>
+                <option value="blue">Blue Diamonds</option>
+                <option value="red">Red Devil</option>
+              </select>
+              <input class="rosterWinProbability" type="range" min="0" max="100" value="10">
+              <button type="button" class="saveRosterProbabilityBtn">Save Player Win Probability</button>
+              <button type="button" class="openPlayerProbabilityBtn">More Player Probability Settings</button>
+              <div class="rosterProbabilityStatus" role="status"></div>
+            </div>
+          `}
           <div class="mini-stats">
             <div>Time: <b>${p.timePlayingMinutes || 0}m</b></div>
             <div>Credits: <b>${(p.credits || 0).toLocaleString()}</b></div>
@@ -199,6 +221,48 @@
         btn.disabled = true;
         await drApprovePlayer(row.dataset.uid);
         await renderPlayers();
+      });
+    });
+
+    list.querySelectorAll(".roster-probability-control").forEach((control) => {
+      const row = control.closest(".player-row");
+      const playerForRow = players.find((p) => p.id === row.dataset.uid);
+      const scopeSelect = control.querySelector(".rosterGameScope");
+      const slider = control.querySelector(".rosterWinProbability");
+      const value = control.querySelector(".rosterWinValue");
+      const status = control.querySelector(".rosterProbabilityStatus");
+
+      const refresh = () => {
+        const scope = scopeSelect.value;
+        const effective = Object.assign(
+          {}, settingsByScope[scope],
+          drPlayerSettingsForGame(playerForRow && playerForRow.settingsOverride, scope)
+        );
+        slider.value = effective.winProbability;
+        value.textContent = slider.value + "%";
+        status.textContent = "";
+      };
+      refresh();
+      scopeSelect.addEventListener("change", refresh);
+      slider.addEventListener("input", () => { value.textContent = slider.value + "%"; });
+      control.querySelector(".saveRosterProbabilityBtn").addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        status.textContent = "Saving…";
+        try {
+          await drSetPlayerSettingsOverride(row.dataset.uid, {
+            winProbability: parseInt(slider.value, 10),
+          }, scopeSelect.value);
+          status.textContent = "Saved — active on the player's next spin.";
+        } catch (error) {
+          console.error("Could not save roster probability", error);
+          status.textContent = "Save failed. Please try again.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+      control.querySelector(".openPlayerProbabilityBtn").addEventListener("click", () => {
+        openProbabilitySettingsForPlayer(row.dataset.uid, scopeSelect.value);
       });
     });
 
@@ -279,6 +343,7 @@
     { id: "winProbability", valId: "valWinProb", key: "winProbability", suffix: "%" },
     { id: "jesterRate", valId: "valJester", key: "jesterRate", suffix: "%" },
     { id: "bonusRate", valId: "valBonusRate", key: "bonusRate", suffix: "%" },
+    { id: "jackpotRate", valId: "valJackpotRate", key: "jackpotRate", suffix: "%" },
     { id: "clusterMin", valId: "valCluster", key: "clusterMin", suffix: "" },
   ];
 
@@ -305,9 +370,7 @@
       document.getElementById(control.id).value = settings[control.key];
     });
 
-    const redOnly = scope === "red";
-    document.getElementById("bonusRateRow").hidden = redOnly;
-    document.getElementById("clusterMinRow").hidden = redOnly;
+    document.getElementById("clusterMinRow").hidden = scope === "red";
     const playerSelect = document.getElementById("probabilityPlayerUid");
     const playerLabel = playerSelect.options[playerSelect.selectedIndex]
       ? playerSelect.options[playerSelect.selectedIndex].textContent
@@ -332,25 +395,42 @@
     const playerPicker = document.getElementById("probabilityPlayerPicker");
     const resetBtn = document.getElementById("resetPlayerProbabilitySettingsBtn");
     const status = document.getElementById("probabilitySaveStatus");
+    const closeBtn = document.getElementById("closeProbabilitySettingsBtn");
+    const backdrop = document.getElementById("probabilityModalBackdrop");
 
     PROBABILITY_CONTROLS.forEach((control) => {
       document.getElementById(control.id).addEventListener("input", updateProbabilityValueLabels);
     });
 
-    openBtn.addEventListener("click", async () => {
-      openBtn.disabled = true;
-      const players = await drGetPlayers();
-      playerSelect.innerHTML = players
-        .filter((p) => p.role !== "admin")
-        .sort((a, b) => String(a.email).localeCompare(String(b.email)))
-        .map((p) => `<option value="${p.id}">${escapeHtml(p.email)}</option>`)
-        .join("");
-      await loadProbabilitySettings();
+    async function openSettings(requestedUid, requestedScope) {
       panel.hidden = false;
+      backdrop.hidden = false;
       openBtn.hidden = true;
-      openBtn.disabled = false;
-      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    });
+      document.body.classList.add("probability-modal-open");
+      status.textContent = "Loading saved settings…";
+      try {
+        const players = await drGetPlayers();
+        playerSelect.innerHTML = players
+          .filter((p) => p.role !== "admin")
+          .sort((a, b) => String(a.email).localeCompare(String(b.email)))
+          .map((p) => `<option value="${p.id}">${escapeHtml(p.email)}</option>`)
+          .join("");
+        if (requestedUid) {
+          targetSelect.value = "player";
+          playerPicker.hidden = false;
+          resetBtn.hidden = false;
+          playerSelect.value = requestedUid;
+        }
+        if (requestedScope) scopeSelect.value = requestedScope;
+        await loadProbabilitySettings();
+      } catch (error) {
+        console.error("Could not load probability settings", error);
+        status.textContent = "Could not load saved settings. Close and try again.";
+      }
+    }
+
+    window.openProbabilitySettingsForPlayer = openSettings;
+    openBtn.addEventListener("click", () => openSettings());
 
     scopeSelect.addEventListener("change", loadProbabilitySettings);
     playerSelect.addEventListener("change", loadProbabilitySettings);
@@ -362,11 +442,16 @@
       await loadProbabilitySettings();
     });
 
-    cancelBtn.addEventListener("click", () => {
+    const closeSettings = () => {
       panel.hidden = true;
+      backdrop.hidden = true;
       openBtn.hidden = false;
+      document.body.classList.remove("probability-modal-open");
       status.textContent = "";
-    });
+    };
+    cancelBtn.addEventListener("click", closeSettings);
+    closeBtn.addEventListener("click", closeSettings);
+    backdrop.addEventListener("click", closeSettings);
 
     saveBtn.addEventListener("click", async () => {
       const scope = scopeSelect.value;
@@ -379,9 +464,10 @@
       const partial = {
         winProbability: parseInt(document.getElementById("winProbability").value, 10),
         jesterRate: parseInt(document.getElementById("jesterRate").value, 10),
+        bonusRate: parseInt(document.getElementById("bonusRate").value, 10),
+        jackpotRate: parseInt(document.getElementById("jackpotRate").value, 10),
       };
       if (scope !== "red") {
-        partial.bonusRate = parseInt(document.getElementById("bonusRate").value, 10);
         partial.clusterMin = parseInt(document.getElementById("clusterMin").value, 10);
       }
 
@@ -399,8 +485,7 @@
         }
         status.textContent = "Saved successfully.";
         await new Promise((resolve) => setTimeout(resolve, 650));
-        panel.hidden = true;
-        openBtn.hidden = false;
+        closeSettings();
       } catch (error) {
         console.error("Could not save probability settings", error);
         status.textContent = "Save failed. Please try again.";
@@ -440,10 +525,11 @@
       return;
     }
 
-    await renderPlayers();
-    await renderReferrals();
-    await renderFeedback();
     initProbabilitySettings();
+    const sections = await Promise.allSettled([renderPlayers(), renderReferrals(), renderFeedback()]);
+    sections.forEach((result) => {
+      if (result.status === "rejected") console.error("Admin section failed to load", result.reason);
+    });
   })();
 
   document.getElementById("signOutBtn").addEventListener("click", async () => {

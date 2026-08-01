@@ -227,7 +227,8 @@
 
 .probability-open-btn,
 .probability-save-btn,
-.probability-cancel-btn {
+.probability-cancel-btn,
+.probability-reset-btn {
   width: 100%;
   padding: 11px 12px;
   border-radius: 9px;
@@ -301,8 +302,16 @@
   color: #aabbd2;
 }
 
+.probability-reset-btn {
+  margin-top: 7px;
+  border: 1px solid rgba(255, 170, 80, 0.5);
+  background: rgba(135, 65, 10, 0.18);
+  color: #ffd09a;
+}
+
 .probability-save-btn:disabled,
-.probability-cancel-btn:disabled {
+.probability-cancel-btn:disabled,
+.probability-reset-btn:disabled {
   opacity: 0.55;
   pointer-events: none;
 }

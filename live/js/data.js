@@ -271,17 +271,53 @@ async function drSaveSettings(partial, scope) {
   return drGetSettings(docId);
 }
 
-// Selected game's saved settings with this specific player's overrides
-// layered on top — what the game engine actually uses for each spin.
-async function drGetEffectiveSettings(player, game) {
-  const global = await drGetSettings(game);
-  const override = (player && player.settingsOverride) || {};
-  return Object.assign({}, global, override);
+function drPlayerSettingsForGame(settingsOverride, game) {
+  const override = settingsOverride || {};
+
+  // Backwards compatibility: older player documents stored the four
+  // settings directly inside settingsOverride. Treat those as an
+  // all-games override until an admin replaces or clears them.
+  const legacy = {};
+  Object.keys(DEFAULT_SETTINGS).forEach((key) => {
+    if (override[key] != null) legacy[key] = override[key];
+  });
+
+  const gameScope = drSettingsScope(game);
+  return Object.assign(
+    {},
+    legacy,
+    override.global || {},
+    gameScope === "global" ? {} : (override[gameScope] || {})
+  );
 }
 
-async function drSetPlayerSettingsOverride(uid, partial) {
+// Selected game's saved settings with this specific player's overrides
+// layered on top — what the game engine actually uses for each spin.
+// Re-read the player document here so an admin change takes effect on the
+// player's very next spin, even if their game page was already open.
+async function drGetEffectiveSettings(player, game) {
+  const gameSettings = await drGetSettings(game);
+  let currentPlayer = player;
+  if (player && player.id) {
+    currentPlayer = (await drFindPlayerByUid(player.id)) || player;
+    player.settingsOverride = currentPlayer.settingsOverride || {};
+  }
+  return Object.assign(
+    {},
+    gameSettings,
+    drPlayerSettingsForGame(currentPlayer && currentPlayer.settingsOverride, game)
+  );
+}
+
+async function drSetPlayerSettingsOverride(uid, partial, scope) {
+  const docId = drSettingsScope(scope);
   const updates = {};
-  Object.keys(partial).forEach((k) => { updates["settingsOverride." + k] = partial[k]; });
+  const scopes = docId === "global" ? ["global", "blue", "red"] : [docId];
+  scopes.forEach((targetScope) => {
+    Object.keys(partial).forEach((key) => {
+      updates["settingsOverride." + targetScope + "." + key] = partial[key];
+    });
+  });
   await drDb.collection("players").doc(uid).update(updates);
 }
 

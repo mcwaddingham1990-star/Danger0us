@@ -28,11 +28,22 @@
     </button>
 
     <div class="probability-settings-panel" id="probabilitySettingsPanel" hidden>
+      <label class="probability-game-label" for="probabilityTargetScope">Apply settings to</label>
+      <select id="probabilityTargetScope" class="probability-game-select">
+        <option value="all">All Players</option>
+        <option value="player">One Individual Player</option>
+      </select>
+
+      <div id="probabilityPlayerPicker" hidden>
+        <label class="probability-game-label" for="probabilityPlayerUid">Choose signed-up player</label>
+        <select id="probabilityPlayerUid" class="probability-game-select"></select>
+      </div>
+
       <label class="probability-game-label" for="probabilityGameScope">Adjust settings for</label>
       <select id="probabilityGameScope" class="probability-game-select">
+        <option value="global">All Games</option>
         <option value="blue">Blue Diamonds</option>
         <option value="red">Red Devil</option>
-        <option value="global">All Games</option>
       </select>
 
       <div class="probability-scope-note" id="probabilityScopeNote"></div>
@@ -61,6 +72,9 @@
       <button type="button" class="probability-cancel-btn" id="cancelProbabilitySettingsBtn">
         Cancel Without Saving
       </button>
+      <button type="button" class="probability-reset-btn" id="resetPlayerProbabilitySettingsBtn" hidden>
+        Reset This Player to Standard Settings
+      </button>
     </div>
 
     <button class="btn-secondary" id="viewAsPlayerBtn" style="margin-top: 10px;">View as Player</button>
@@ -77,17 +91,10 @@
 <script src="js/data.js"></script>
 <script src="js/ticker.js"></script>
 <script>
-  const SETTINGS_FIELDS = [
-    { key: "winProbability", label: "Win Probability", suffix: "%", min: 0, max: 100 },
-    { key: "jesterRate", label: "Joker Appearance Rate", suffix: "%", min: 0, max: 100 },
-    { key: "bonusRate", label: "Bonus Spin Trigger Rate", suffix: "%", min: 0, max: 100 },
-    { key: "clusterMin", label: "Cluster Size Requirement", suffix: "", min: 5, max: 10 },
-  ];
-
   async function renderPlayers() {
     const list = document.getElementById("playerList");
-    const [allPlayers, allRedemptions, globalSettings] = await Promise.all([
-      drGetPlayers(), drGetRedemptions(), drGetSettings(),
+    const [allPlayers, allRedemptions] = await Promise.all([
+      drGetPlayers(), drGetRedemptions(),
     ]);
     const players = allPlayers;
 
@@ -118,15 +125,6 @@
       const approved = !!p.approved;
       const referredByPlayer = p.referredBy ? players.find((x) => x.id === p.referredBy) : null;
       const referredCount = players.filter((x) => x.referredBy === p.id).length;
-      const effective = Object.assign({}, globalSettings, p.settingsOverride || {});
-
-      const settingsSlidersHtml = SETTINGS_FIELDS.map((f) => `
-        <div class="setting-row" data-key="${f.key}" data-suffix="${f.suffix}">
-          <label>${f.label} <span class="val">${effective[f.key]}${f.suffix}</span></label>
-          <input type="range" class="ovInput" min="${f.min}" max="${f.max}" value="${effective[f.key]}">
-        </div>
-      `).join("");
-
       return `
         <div class="player-row" data-uid="${p.id}">
           <div class="email">
@@ -152,11 +150,6 @@
             <input type="number" placeholder="Amount" class="creditInput" min="1">
             <button class="depositBtn">Add Deposit</button>
             <button class="bonusBtn">Add Bonus</button>
-          </div>
-          <button type="button" class="player-settings-toggle">Player Game Settings ▾</button>
-          <div class="player-settings-panel" style="display:none;">
-            ${settingsSlidersHtml}
-            <button type="button" class="resetSettingsBtn">Reset to Global Defaults</button>
           </div>
           ${redeemHtml}
         </div>
@@ -209,34 +202,6 @@
       });
     });
 
-    list.querySelectorAll(".player-settings-toggle").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const row = e.target.closest(".player-row");
-        const panel = row.querySelector(".player-settings-panel");
-        panel.style.display = panel.style.display === "none" ? "block" : "none";
-      });
-    });
-
-    list.querySelectorAll(".ovInput").forEach((input) => {
-      const settingRow = input.closest(".setting-row");
-      const playerRow = input.closest(".player-row");
-      const uid = playerRow.dataset.uid;
-      const key = settingRow.dataset.key;
-      const suffix = settingRow.dataset.suffix;
-      input.addEventListener("input", () => {
-        settingRow.querySelector(".val").textContent = input.value + suffix;
-        drSetPlayerSettingsOverride(uid, { [key]: parseInt(input.value, 10) });
-      });
-    });
-
-    list.querySelectorAll(".resetSettingsBtn").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        const row = e.target.closest(".player-row");
-        btn.disabled = true;
-        await drResetPlayerSettings(row.dataset.uid);
-        await renderPlayers();
-      });
-    });
   }
 
   async function renderReferrals() {
@@ -326,7 +291,16 @@
 
   async function loadProbabilitySettings() {
     const scope = document.getElementById("probabilityGameScope").value;
-    const settings = await drGetSettings(scope);
+    const target = document.getElementById("probabilityTargetScope").value;
+    const uid = document.getElementById("probabilityPlayerUid").value;
+    let settings = await drGetSettings(scope);
+    if (target === "player" && uid) {
+      const selectedPlayer = await drFindPlayerByUid(uid);
+      settings = Object.assign(
+        {}, settings,
+        drPlayerSettingsForGame(selectedPlayer && selectedPlayer.settingsOverride, scope)
+      );
+    }
     PROBABILITY_CONTROLS.forEach((control) => {
       document.getElementById(control.id).value = settings[control.key];
     });
@@ -334,12 +308,15 @@
     const redOnly = scope === "red";
     document.getElementById("bonusRateRow").hidden = redOnly;
     document.getElementById("clusterMinRow").hidden = redOnly;
-    document.getElementById("probabilityScopeNote").textContent =
-      scope === "blue"
-        ? "These values affect Blue Diamonds only."
-        : scope === "red"
-          ? "These values affect Red Devil only. Its bonus is driven by the Joker rate."
-          : "Saving here applies the displayed values to both games.";
+    const playerSelect = document.getElementById("probabilityPlayerUid");
+    const playerLabel = playerSelect.options[playerSelect.selectedIndex]
+      ? playerSelect.options[playerSelect.selectedIndex].textContent
+      : "the selected player";
+    const gameLabel = scope === "blue" ? "Blue Diamonds only"
+      : scope === "red" ? "Red Devil only" : "both games";
+    document.getElementById("probabilityScopeNote").textContent = target === "player"
+      ? `Saving will affect ${playerLabel} in ${gameLabel}.`
+      : `Saving will affect all players in ${gameLabel}.`;
     document.getElementById("probabilitySaveStatus").textContent = "";
     updateProbabilityValueLabels();
   }
@@ -350,6 +327,10 @@
     const saveBtn = document.getElementById("saveProbabilitySettingsBtn");
     const cancelBtn = document.getElementById("cancelProbabilitySettingsBtn");
     const scopeSelect = document.getElementById("probabilityGameScope");
+    const targetSelect = document.getElementById("probabilityTargetScope");
+    const playerSelect = document.getElementById("probabilityPlayerUid");
+    const playerPicker = document.getElementById("probabilityPlayerPicker");
+    const resetBtn = document.getElementById("resetPlayerProbabilitySettingsBtn");
     const status = document.getElementById("probabilitySaveStatus");
 
     PROBABILITY_CONTROLS.forEach((control) => {
@@ -358,6 +339,12 @@
 
     openBtn.addEventListener("click", async () => {
       openBtn.disabled = true;
+      const players = await drGetPlayers();
+      playerSelect.innerHTML = players
+        .filter((p) => p.role !== "admin")
+        .sort((a, b) => String(a.email).localeCompare(String(b.email)))
+        .map((p) => `<option value="${p.id}">${escapeHtml(p.email)}</option>`)
+        .join("");
       await loadProbabilitySettings();
       panel.hidden = false;
       openBtn.hidden = true;
@@ -366,6 +353,14 @@
     });
 
     scopeSelect.addEventListener("change", loadProbabilitySettings);
+    playerSelect.addEventListener("change", loadProbabilitySettings);
+    targetSelect.addEventListener("change", async () => {
+      const isPlayer = targetSelect.value === "player";
+      playerPicker.hidden = !isPlayer;
+      resetBtn.hidden = !isPlayer;
+      saveBtn.disabled = isPlayer && !playerSelect.value;
+      await loadProbabilitySettings();
+    });
 
     cancelBtn.addEventListener("click", () => {
       panel.hidden = true;
@@ -375,6 +370,12 @@
 
     saveBtn.addEventListener("click", async () => {
       const scope = scopeSelect.value;
+      const target = targetSelect.value;
+      const uid = playerSelect.value;
+      if (target === "player" && !uid) {
+        status.textContent = "Choose a player first.";
+        return;
+      }
       const partial = {
         winProbability: parseInt(document.getElementById("winProbability").value, 10),
         jesterRate: parseInt(document.getElementById("jesterRate").value, 10),
@@ -387,9 +388,15 @@
       saveBtn.disabled = true;
       cancelBtn.disabled = true;
       scopeSelect.disabled = true;
+      targetSelect.disabled = true;
+      playerSelect.disabled = true;
       status.textContent = "Saving…";
       try {
-        await drSaveSettings(partial, scope);
+        if (target === "player") {
+          await drSetPlayerSettingsOverride(uid, partial, scope);
+        } else {
+          await drSaveSettings(partial, scope);
+        }
         status.textContent = "Saved successfully.";
         await new Promise((resolve) => setTimeout(resolve, 650));
         panel.hidden = true;
@@ -401,6 +408,25 @@
         saveBtn.disabled = false;
         cancelBtn.disabled = false;
         scopeSelect.disabled = false;
+        targetSelect.disabled = false;
+        playerSelect.disabled = false;
+      }
+    });
+
+    resetBtn.addEventListener("click", async () => {
+      const uid = playerSelect.value;
+      if (!uid) return;
+      resetBtn.disabled = true;
+      status.textContent = "Resetting…";
+      try {
+        await drResetPlayerSettings(uid);
+        status.textContent = "Player reset to standard settings.";
+        await loadProbabilitySettings();
+      } catch (error) {
+        console.error("Could not reset player settings", error);
+        status.textContent = "Reset failed. Please try again.";
+      } finally {
+        resetBtn.disabled = false;
       }
     });
   }

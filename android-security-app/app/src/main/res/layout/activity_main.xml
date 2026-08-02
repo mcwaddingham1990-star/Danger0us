@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/status_intro"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:background="#FFFFFF"
+            android:lineSpacingExtra="4dp"
+            android:layout_marginBottom="24dp" />
+
+        <Button
+            android:id="@+id/btnEnableAccessibility"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_enable_accessibility"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnGrantCamera"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_grant_camera"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnGrantNotifications"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_grant_notifications"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btnViewHistory"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_view_history"
+            android:layout_marginBottom="24dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/privacy_note"
+            android:textSize="12sp"
+            android:textColor="#666666" />
+
+    </LinearLayout>
+</ScrollView>

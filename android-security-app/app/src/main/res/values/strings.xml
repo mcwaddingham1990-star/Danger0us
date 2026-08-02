@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Security Watch</string>
+    <string name="history_title">Alert History</string>
+    <string name="view_photo">View photo</string>
+
+    <string name="accessibility_service_description">Watches for Accessibility, permissions, and device-admin settings screens being opened on this device, and alerts you with a front-camera photo when they are.</string>
+
+    <string name="monitoring_notification_title">Security Watch is monitoring</string>
+    <string name="monitoring_notification_text">You will be alerted if Accessibility or permission settings are opened</string>
+
+    <string name="alert_notification_title">Settings tampering detected</string>
+
+    <string name="status_intro">Enable both of the following so Security Watch can alert you when someone opens Accessibility or app-permission settings on this device.</string>
+    <string name="btn_enable_accessibility">Enable accessibility monitoring</string>
+    <string name="btn_grant_camera">Grant camera permission</string>
+    <string name="btn_grant_notifications">Allow notifications</string>
+    <string name="btn_view_history">View alert history</string>
+    <string name="privacy_note">Security Watch only runs on this device, only watches Settings/permission screens, and only stores photos locally on this phone. Nothing is uploaded anywhere. Install this only on a device you own or are authorized to monitor.</string>
+    <string name="empty_history">No alerts yet.</string>
+</resources>

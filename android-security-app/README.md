@@ -55,16 +55,13 @@ never uploaded anywhere.
 
 ### Gradle wrapper
 
-This project doesn't commit the wrapper's binary jar. Generate it once
-before building from the command line:
+The Gradle wrapper is included, so you can build straight from the
+command line without a separate Gradle install:
 
 ```
 cd android-security-app
-gradle wrapper --gradle-version 8.14.3
 ./gradlew assembleDebug
 ```
-
-(Android Studio will do this for you automatically on first open.)
 
 ## Limitations
 

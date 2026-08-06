@@ -814,6 +814,131 @@ if (player) {
     document.getElementById("btnSpinFloat").classList.remove("disabled");
   }
 
+  // ---- Movable gameplay control bar ----------------------------------
+
+  const controlBar = document.querySelector(".control-bar");
+  const CONTROL_BAR_POSITION_KEY = "dangerousRidesBlueControlBarPosition";
+  const LONG_PRESS_MS = 450;
+  const MOVE_TOLERANCE = 12;
+  let barPressTimer = null;
+  let barDragActive = false;
+  let suppressBarClick = false;
+  let barPointerId = null;
+  let barOffsetX = 0;
+  let barOffsetY = 0;
+  let barStartX = 0;
+  let barStartY = 0;
+
+  function clampControlBar(left, top) {
+    const margin = 6;
+    const rect = controlBar.getBoundingClientRect();
+    return {
+      left: Math.max(margin, Math.min(left, window.innerWidth - rect.width - margin)),
+      top: Math.max(margin, Math.min(top, window.innerHeight - rect.height - margin)),
+    };
+  }
+
+  function placeControlBar(left, top) {
+    const pos = clampControlBar(left, top);
+    controlBar.style.left = pos.left + "px";
+    controlBar.style.top = pos.top + "px";
+    controlBar.style.right = "auto";
+    controlBar.style.bottom = "auto";
+    controlBar.style.width = Math.min(controlBar.getBoundingClientRect().width, window.innerWidth - 12) + "px";
+    return pos;
+  }
+
+  function saveControlBarPosition(pos) {
+    const rect = controlBar.getBoundingClientRect();
+    const maxX = Math.max(1, window.innerWidth - rect.width - 12);
+    const maxY = Math.max(1, window.innerHeight - rect.height - 12);
+    localStorage.setItem(CONTROL_BAR_POSITION_KEY, JSON.stringify({
+      x: Math.max(0, Math.min(1, (pos.left - 6) / maxX)),
+      y: Math.max(0, Math.min(1, (pos.top - 6) / maxY)),
+    }));
+  }
+
+  function restoreControlBarPosition() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CONTROL_BAR_POSITION_KEY));
+      if (!saved || !Number.isFinite(saved.x) || !Number.isFinite(saved.y)) return;
+      const rect = controlBar.getBoundingClientRect();
+      placeControlBar(
+        6 + saved.x * Math.max(1, window.innerWidth - rect.width - 12),
+        6 + saved.y * Math.max(1, window.innerHeight - rect.height - 12)
+      );
+    } catch (_) {
+      localStorage.removeItem(CONTROL_BAR_POSITION_KEY);
+    }
+  }
+
+  controlBar.addEventListener("pointerdown", (event) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    barPointerId = event.pointerId;
+    barStartX = event.clientX;
+    barStartY = event.clientY;
+    const rect = controlBar.getBoundingClientRect();
+    barOffsetX = event.clientX - rect.left;
+    barOffsetY = event.clientY - rect.top;
+
+    clearTimeout(barPressTimer);
+    barPressTimer = setTimeout(() => {
+      barDragActive = true;
+      suppressBarClick = true;
+      controlBar.classList.add("dragging");
+      controlBar.style.width = rect.width + "px";
+      placeControlBar(rect.left, rect.top);
+      controlBar.setPointerCapture(event.pointerId);
+      if (navigator.vibrate) navigator.vibrate(35);
+    }, LONG_PRESS_MS);
+  });
+
+  controlBar.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== barPointerId) return;
+    if (!barDragActive) {
+      if (Math.hypot(event.clientX - barStartX, event.clientY - barStartY) > MOVE_TOLERANCE) {
+        clearTimeout(barPressTimer);
+      }
+      return;
+    }
+    event.preventDefault();
+    placeControlBar(event.clientX - barOffsetX, event.clientY - barOffsetY);
+  });
+
+  function finishBarDrag(event) {
+    if (event.pointerId !== barPointerId) return;
+    clearTimeout(barPressTimer);
+    if (barDragActive) {
+      const rect = controlBar.getBoundingClientRect();
+      saveControlBarPosition({ left: rect.left, top: rect.top });
+      controlBar.classList.remove("dragging");
+      barDragActive = false;
+    }
+    barPointerId = null;
+  }
+
+  controlBar.addEventListener("pointerup", finishBarDrag);
+  controlBar.addEventListener("pointercancel", finishBarDrag);
+  controlBar.addEventListener("contextmenu", (event) => {
+    if (barDragActive || barPressTimer) event.preventDefault();
+  });
+  controlBar.addEventListener("click", (event) => {
+    if (!suppressBarClick) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    suppressBarClick = false;
+  }, true);
+
+  window.addEventListener("resize", () => {
+    if (controlBar.style.top) {
+      const rect = controlBar.getBoundingClientRect();
+      const pos = placeControlBar(rect.left, rect.top);
+      saveControlBarPosition(pos);
+    }
+  });
+
+  requestAnimationFrame(restoreControlBarPosition);
+
   // ---- Controls ------------------------------------------------------
 
   document.querySelectorAll(".ctrl-btn, .stepper-btn").forEach((btn) => {

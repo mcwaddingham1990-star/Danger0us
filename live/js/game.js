@@ -908,6 +908,7 @@ if (player) {
   function finishBarDrag(event) {
     if (event.pointerId !== barPointerId) return;
     clearTimeout(barPressTimer);
+    barPressTimer = null;
     if (barDragActive) {
       const rect = controlBar.getBoundingClientRect();
       saveControlBarPosition({ left: rect.left, top: rect.top });

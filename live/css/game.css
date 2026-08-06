@@ -741,7 +741,7 @@ html, body {
   background: linear-gradient(0deg, rgba(2, 4, 10, 0.96), rgba(2, 4, 10, 0.8));
   border-top: 1px solid rgba(90, 160, 255, 0.4);
   box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.5);
-  touch-action: manipulation;
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }

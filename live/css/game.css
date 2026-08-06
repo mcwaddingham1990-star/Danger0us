@@ -741,6 +741,16 @@ html, body {
   background: linear-gradient(0deg, rgba(2, 4, 10, 0.96), rgba(2, 4, 10, 0.8));
   border-top: 1px solid rgba(90, 160, 255, 0.4);
   box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.5);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.control-bar.dragging {
+  touch-action: none;
+  cursor: grabbing;
+  border: 1px solid rgba(127, 220, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(47, 195, 255, 0.22), 0 0 24px rgba(47, 195, 255, 0.7);
 }
 
 .ctrl-btn {
